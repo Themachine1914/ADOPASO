@@ -26,7 +26,7 @@ export function Home() {
             <img
               src="/logo-adopaso.jpg"
               alt="ADOPASO — Asociación Dominicana de Caballos de Paso"
-              className="fade-up mb-8 h-36 w-auto object-contain drop-shadow-[0_8px_30px_rgba(0,0,0,0.45)] md:h-44"
+              className="fade-up mb-8 h-36 w-auto rounded-[20px] object-contain drop-shadow-[0_8px_30px_rgba(0,0,0,0.45)] md:h-44"
             />
             <p className="fade-up fade-up-delay-1 mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-gold">
               Asociación Dominicana de Caballos de Paso

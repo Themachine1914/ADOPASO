@@ -1,11 +1,22 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { StatusBadge } from '../components/StatusBadge'
 import { getCompetitionById } from '../data/competitions'
 import { getHorseById, getRanking } from '../data/horses'
 import { formatDate, formatPoints, placeLabel } from '../lib/format'
+import { sexLabel, virusCertificateStatus } from '../lib/health'
 import type { Year } from '../types'
 
 function parseYear(value: string | null): Year {
   return value === '2025' ? 2025 : 2026
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[12px] border border-border bg-surface p-4">
+      <dt className="text-xs uppercase tracking-[0.14em] text-muted">{label}</dt>
+      <dd className="mt-1 font-semibold text-ink">{value || '—'}</dd>
+    </div>
+  )
 }
 
 export function HorseDetail() {
@@ -28,6 +39,8 @@ export function HorseDetail() {
   }
 
   const yearPoints = horse.pointsByYear[year] ?? 0
+  const virusStatus = virusCertificateStatus(horse.virusCertificate)
+
   const history = [...horse.history]
     .map((entry) => ({
       ...entry,
@@ -67,29 +80,91 @@ export function HorseDetail() {
             <h1 className="font-display text-4xl font-semibold tracking-tight text-ink md:text-5xl">
               {horse.name}
             </h1>
-            <p className="mt-3 text-lg text-muted">{horse.stable}</p>
+            <p className="mt-3 text-lg text-muted">
+              {sexLabel(horse.sex)}
+              {horse.color ? ` · ${horse.color}` : ''}
+              {' · '}
+              {horse.stable}
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <div className="flex items-center gap-2 rounded-[10px] border border-border bg-bg px-3 py-2">
+                <span className="text-xs text-muted">Cert. virus</span>
+                <StatusBadge status={virusStatus} />
+              </div>
+            </div>
 
             <dl className="mt-8 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-[12px] border border-border bg-surface p-4">
-                <dt className="text-xs uppercase tracking-[0.14em] text-muted">Dueño</dt>
-                <dd className="mt-1 font-semibold text-ink">{horse.owner}</dd>
-              </div>
-              <div className="rounded-[12px] border border-border bg-surface p-4">
-                <dt className="text-xs uppercase tracking-[0.14em] text-muted">Puntos {year}</dt>
-                <dd className="mt-1 text-2xl font-bold tabular-nums text-gold">
-                  {formatPoints(yearPoints)}
-                </dd>
-              </div>
-              <div className="rounded-[12px] border border-border bg-surface p-4">
-                <dt className="text-xs uppercase tracking-[0.14em] text-muted">Sexo</dt>
-                <dd className="mt-1 font-semibold capitalize text-ink">{horse.sex}</dd>
-              </div>
-              <div className="rounded-[12px] border border-border bg-surface p-4">
-                <dt className="text-xs uppercase tracking-[0.14em] text-muted">Año de nacimiento</dt>
-                <dd className="mt-1 font-semibold text-ink">{horse.birthYear}</dd>
-              </div>
+              <InfoCard label="Dueño" value={horse.owner} />
+              <InfoCard label={`Puntos ${year}`} value={formatPoints(yearPoints)} />
+              <InfoCard label="Sexo" value={sexLabel(horse.sex)} />
+              <InfoCard label="Nacimiento" value={formatDate(horse.birthDate)} />
             </dl>
           </div>
+        </div>
+      </section>
+
+      <section className="container-app py-12 md:py-16">
+        <h2 className="font-display text-2xl font-semibold text-ink md:text-3xl">
+          Identidad y pedigrí
+        </h2>
+        <p className="mt-2 text-sm text-muted">
+          Datos de identificación y línea genética del ejemplar.
+        </p>
+        <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <InfoCard label="Color" value={horse.color} />
+          <InfoCard label="Padre" value={horse.sireName} />
+          <InfoCard label="Madre" value={horse.damName} />
+          <InfoCard label="Abuelo paterno" value={horse.paternalGrandsire} />
+          <InfoCard label="Abuelo materno" value={horse.maternalGrandsire} />
+          <InfoCard label="Criadero" value={horse.stable} />
+        </dl>
+      </section>
+
+      <section className="border-t border-border bg-surface/30">
+        <div className="container-app py-12 md:py-16">
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="font-display text-2xl font-semibold text-ink md:text-3xl">
+                Certificado de virus
+              </h2>
+              <p className="mt-2 text-sm text-muted">
+                Prueba EIA (anemia infecciosa equina). Requerido para competencias.
+              </p>
+            </div>
+            <StatusBadge status={virusStatus} />
+          </div>
+
+          {!horse.virusCertificate ? (
+            <div className="rounded-[12px] border border-border bg-surface px-6 py-10 text-center">
+              <p className="font-semibold text-ink">Sin certificado registrado</p>
+              <p className="mt-2 text-sm text-muted">
+                Este caballo no tiene certificado de virus vigente en el sistema.
+              </p>
+            </div>
+          ) : (
+            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <InfoCard
+                label="Fecha de prueba"
+                value={formatDate(horse.virusCertificate.testedAt)}
+              />
+              <InfoCard
+                label="Válido hasta"
+                value={formatDate(horse.virusCertificate.validUntil)}
+              />
+              <InfoCard
+                label="Resultado"
+                value={
+                  horse.virusCertificate.result === 'negativo' ? 'Negativo' : 'Positivo'
+                }
+              />
+              <InfoCard label="Laboratorio" value={horse.virusCertificate.lab} />
+              <InfoCard
+                label="Nº de certificado"
+                value={horse.virusCertificate.certificateNumber}
+              />
+            </dl>
+          )}
         </div>
       </section>
 
@@ -114,7 +189,7 @@ export function HorseDetail() {
               {history.map((entry) => (
                 <div
                   key={`${entry.competitionId}-${entry.place}`}
-                  className="flex flex-col gap-3 bg-surface/40 px-5 py-4 transition-colors duration-200 hover:bg-surface-elevated sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 bg-bg/40 px-5 py-4 transition-colors duration-200 hover:bg-surface-elevated sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <p className="font-semibold text-ink">{entry.competition!.name}</p>

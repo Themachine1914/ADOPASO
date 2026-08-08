@@ -22,7 +22,7 @@ export function Header() {
           <img
             src="/logo-adopaso.jpg"
             alt="ADOPASO"
-            className="h-11 w-auto rounded-sm object-contain md:h-12"
+            className="h-11 w-auto rounded-[12px] object-contain md:h-12"
           />
           <div className="hidden leading-tight sm:block">
             <p className="text-sm font-bold tracking-[0.12em] text-ink">ADOPASO</p>
