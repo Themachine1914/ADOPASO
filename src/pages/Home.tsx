@@ -18,15 +18,15 @@ export function Home() {
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0,45,98,0.45), transparent 60%), radial-gradient(ellipse 50% 40% at 90% 20%, rgba(206,17,38,0.12), transparent 50%), linear-gradient(180deg, #121212 0%, #0f0f0f 100%)',
+              'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0,45,98,0.55), transparent 60%), radial-gradient(ellipse 50% 40% at 90% 20%, rgba(206,17,38,0.12), transparent 50%), linear-gradient(180deg, #0f1f38 0%, #0a1628 100%)',
           }}
         />
-        <div className="container-app relative py-16 md:py-24 lg:py-28">
+        <div className="container-app relative py-10 md:py-16 lg:py-20">
           <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
             <img
-              src="/logo-adopaso.jpg"
+              src="/logo-adopaso.png"
               alt="ADOPASO — Asociación Dominicana de Caballos de Paso"
-              className="fade-up mb-8 h-36 w-auto rounded-[20px] object-contain drop-shadow-[0_8px_30px_rgba(0,0,0,0.45)] md:h-44"
+              className="fade-up mb-6 w-[min(100%,22rem)] max-w-full rounded-[20px] object-contain drop-shadow-[0_8px_30px_rgba(0,0,0,0.45)] sm:w-[26rem] md:mb-8 md:w-[30rem] lg:w-[34rem]"
             />
             <p className="fade-up fade-up-delay-1 mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-gold">
               Asociación Dominicana de Caballos de Paso

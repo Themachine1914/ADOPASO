@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
+import { SocialLinks } from './SocialLinks'
 
 const links = [
   { to: '/', label: 'Inicio' },
@@ -13,22 +14,26 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-bg/90 backdrop-blur-md">
-      <div className="container-app flex h-16 items-center justify-between md:h-[4.5rem]">
-        <Link
-          to="/"
-          className="flex items-center gap-3 transition-opacity duration-200 hover:opacity-90"
-          onClick={() => setOpen(false)}
-        >
-          <img
-            src="/logo-adopaso.jpg"
-            alt="ADOPASO"
-            className="h-11 w-auto rounded-[12px] object-contain md:h-12"
-          />
-          <div className="hidden leading-tight sm:block">
-            <p className="text-sm font-bold tracking-[0.12em] text-ink">ADOPASO</p>
-            <p className="text-[11px] text-muted">Caballos de Paso Fino</p>
-          </div>
-        </Link>
+      <div className="container-app flex h-16 items-center justify-between gap-3 md:h-[4.5rem]">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <Link
+            to="/"
+            className="flex min-w-0 items-center gap-3 transition-opacity duration-200 hover:opacity-90"
+            onClick={() => setOpen(false)}
+          >
+            <img
+              src="/logo-adopaso.png"
+              alt="ADOPASO"
+              className="h-11 w-auto shrink-0 rounded-[12px] object-contain md:h-12"
+            />
+            <div className="hidden leading-tight sm:block">
+              <p className="text-sm font-bold tracking-[0.12em] text-ink">ADOPASO</p>
+              <p className="text-[11px] text-muted">Caballos de Paso Fino</p>
+            </div>
+          </Link>
+
+          <SocialLinks className="ml-1 border-l border-border pl-2 sm:ml-2 sm:pl-3" />
+        </div>
 
         <nav className="hidden items-center gap-8 md:flex">
           {links.map((link) => (
@@ -50,7 +55,7 @@ export function Header() {
 
         <button
           type="button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-[10px] border border-border text-ink md:hidden"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-border text-ink md:hidden"
           aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
@@ -89,6 +94,10 @@ export function Header() {
                 {link.label}
               </NavLink>
             ))}
+            <div className="mt-2 flex items-center gap-3 border-t border-border px-3 pt-3">
+              <span className="text-xs text-muted">Síguenos</span>
+              <SocialLinks />
+            </div>
           </nav>
         </div>
       )}
