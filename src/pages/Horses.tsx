@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { PageHeader } from '../components/PageHeader'
 import { searchHorses } from '../data/horses'
 import { formatPoints } from '../lib/format'
 import type { Year } from '../types'
@@ -11,19 +12,12 @@ export function Horses() {
   const results = useMemo(() => searchHorses(query), [query])
 
   return (
-    <div className="container-app py-12 md:py-16">
-      <div className="mb-10 max-w-2xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">
-          Directorio
-        </p>
-        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink md:text-5xl">
-          Caballos
-        </h1>
-        <p className="mt-3 text-muted">
-          Busca cualquier caballo registrado en ADOPASO, esté o no en el ranking
-          de la temporada.
-        </p>
-      </div>
+    <div className="container-app page-shell">
+      <PageHeader
+        eyebrow="Directorio"
+        title="Caballos"
+        description="Busca cualquier caballo registrado en ADOPASO, esté o no en el ranking de la temporada."
+      />
 
       <label className="mb-8 block">
         <span className="sr-only">Buscar caballos</span>
@@ -32,19 +26,19 @@ export function Horses() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar por nombre, dueño o criadero…"
-          className="w-full rounded-[12px] border border-border bg-surface px-4 py-3.5 text-ink placeholder:text-muted/70 transition-colors duration-200 focus:border-gold/50 focus:outline-none md:max-w-xl"
+          className="typo-body w-full rounded-[12px] border border-border bg-surface px-4 py-3.5 text-ink placeholder:text-muted/70 transition-colors duration-200 focus:border-gold/50 focus:outline-none md:max-w-xl"
         />
       </label>
 
-      <p className="mb-4 text-sm text-muted">
+      <p className="typo-meta mb-4">
         {results.length} {results.length === 1 ? 'caballo' : 'caballos'}
         {query.trim() ? ' encontrados' : ' registrados'}
       </p>
 
       {results.length === 0 ? (
         <div className="rounded-[12px] border border-border bg-surface px-6 py-12 text-center">
-          <p className="font-semibold text-ink">Sin resultados</p>
-          <p className="mt-2 text-sm text-muted">
+          <p className="typo-name">Sin resultados</p>
+          <p className="typo-meta mt-2">
             Prueba con otro nombre, dueño o criadero.
           </p>
         </div>
@@ -70,12 +64,12 @@ export function Horses() {
                 </div>
                 <div className="p-4">
                   <div className="mb-2 flex items-start justify-between gap-2">
-                    <h2 className="font-semibold text-ink transition-colors group-hover:text-gold">
+                    <h2 className="typo-name transition-colors group-hover:text-gold">
                       {horse.name}
                     </h2>
                     <span
                       className={[
-                        'shrink-0 rounded-[8px] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]',
+                        'typo-label shrink-0 rounded-[8px] px-2 py-0.5 normal-case tracking-[0.08em]',
                         inRanking
                           ? 'bg-gold/15 text-gold'
                           : 'bg-border/60 text-muted',
@@ -84,8 +78,8 @@ export function Horses() {
                       {inRanking ? `${formatPoints(points)} pts` : 'Sin ranking'}
                     </span>
                   </div>
-                  <p className="text-sm text-muted">{horse.stable}</p>
-                  <p className="mt-0.5 text-xs text-muted/80">{horse.owner}</p>
+                  <p className="typo-meta">{horse.stable}</p>
+                  <p className="typo-caption mt-0.5">{horse.owner}</p>
                 </div>
               </Link>
             )

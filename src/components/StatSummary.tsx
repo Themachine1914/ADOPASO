@@ -15,8 +15,8 @@ export function StatSummary({ items }: StatSummaryProps) {
           key={item.label}
           className="rounded-[12px] border border-border bg-surface px-5 py-6 transition-colors duration-200 hover:border-gold/30"
         >
-          <p className="text-3xl font-bold tracking-tight text-ink md:text-4xl">{item.value}</p>
-          <p className="mt-2 text-sm text-muted">{item.label}</p>
+          <p className="typo-stat">{item.value}</p>
+          <p className="typo-meta mt-2">{item.label}</p>
         </div>
       ))}
     </div>

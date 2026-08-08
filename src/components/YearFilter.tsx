@@ -24,7 +24,7 @@ export function YearFilter({ value, onChange }: YearFilterProps) {
             aria-checked={active}
             onClick={() => onChange(year)}
             className={[
-              'min-w-[4.5rem] rounded-[10px] px-4 py-2 text-sm font-semibold transition-all duration-200',
+              'typo-btn min-w-[4.5rem] rounded-[10px] px-4 py-2 transition-all duration-200',
               active
                 ? 'bg-gold text-bg shadow-[0_0_0_1px_rgba(212,175,55,0.35)]'
                 : 'text-muted hover:text-ink',

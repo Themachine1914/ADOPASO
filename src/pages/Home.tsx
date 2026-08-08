@@ -28,26 +28,26 @@ export function Home() {
               alt="ADOPASO — Asociación Dominicana de Caballos de Paso"
               className="fade-up mb-6 w-[min(100%,22rem)] max-w-full rounded-[20px] object-contain drop-shadow-[0_8px_30px_rgba(0,0,0,0.45)] sm:w-[26rem] md:mb-8 md:w-[30rem] lg:w-[34rem]"
             />
-            <p className="fade-up fade-up-delay-1 mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-gold">
-              Asociación Dominicana de Caballos de Paso
+            <p className="typo-eyebrow fade-up fade-up-delay-1 mb-3">
+              Temporada oficial 2026
             </p>
-            <h1 className="fade-up fade-up-delay-1 font-display text-4xl font-semibold tracking-tight text-ink md:text-5xl lg:text-6xl">
+            <h1 className="typo-hero fade-up fade-up-delay-1">
               Ranking Oficial Adopaso 2026
             </h1>
-            <p className="fade-up fade-up-delay-2 mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted md:text-lg">
+            <p className="typo-lead fade-up fade-up-delay-2 mx-auto mt-5 max-w-xl">
               El tablero de puntuaciones de los mejores caballos de Paso Fino
               de la República Dominicana.
             </p>
             <div className="fade-up fade-up-delay-3 mt-9 flex flex-wrap items-center justify-center gap-3">
               <Link
                 to="/ranking"
-                className="inline-flex items-center justify-center rounded-[12px] bg-gold px-6 py-3 text-sm font-semibold text-bg transition-all duration-200 hover:bg-gold-soft"
+                className="typo-btn inline-flex items-center justify-center rounded-[12px] bg-gold px-6 py-3 text-bg transition-colors duration-200 hover:bg-gold-soft"
               >
                 Ver ranking completo
               </Link>
               <Link
                 to="/competencias"
-                className="inline-flex items-center justify-center rounded-[12px] border border-border bg-transparent px-6 py-3 text-sm font-semibold text-ink transition-all duration-200 hover:border-gold/40 hover:text-gold"
+                className="typo-btn inline-flex items-center justify-center rounded-[12px] border border-border bg-transparent px-6 py-3 text-ink transition-colors duration-200 hover:border-gold/40 hover:text-gold"
               >
                 Competencias
               </Link>
@@ -59,16 +59,12 @@ export function Home() {
       <section className="container-app py-14 md:py-20">
         <div className="mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">
-              Podio
-            </p>
-            <h2 className="mt-2 font-display text-3xl font-semibold text-ink md:text-4xl">
-              Top 3 del año
-            </h2>
+            <p className="typo-eyebrow">Podio</p>
+            <h2 className="typo-section mt-2">Top 3 del año</h2>
           </div>
           <Link
             to="/ranking"
-            className="text-sm font-medium text-muted transition-colors duration-200 hover:text-gold"
+            className="typo-meta font-medium transition-colors duration-200 hover:text-gold"
           >
             Ver todos →
           </Link>
@@ -93,12 +89,8 @@ export function Home() {
       <section className="border-t border-border bg-surface/40">
         <div className="container-app py-14 md:py-16">
           <div className="mb-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">
-              Resumen
-            </p>
-            <h2 className="mt-2 font-display text-3xl font-semibold text-ink">
-              Temporada 2026
-            </h2>
+            <p className="typo-eyebrow">Resumen</p>
+            <h2 className="typo-section mt-2">Temporada 2026</h2>
           </div>
           <StatSummary
             items={[
@@ -111,7 +103,7 @@ export function Home() {
             ]}
           />
           {next && (
-            <p className="mt-6 text-sm text-muted">
+            <p className="typo-meta mt-6">
               Próximo evento:{' '}
               <span className="font-medium text-ink">{next.name}</span> · {next.location}
             </p>

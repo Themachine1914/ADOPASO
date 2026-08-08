@@ -29,25 +29,25 @@ export function HorseCard({ horse, featured = false }: HorseCardProps) {
 
       <div className="p-5 md:p-6">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-[10px] bg-bg px-2 text-sm font-bold text-gold">
+          <span className="typo-meta inline-flex h-8 min-w-8 items-center justify-center rounded-[10px] bg-bg px-2 font-bold text-gold">
             #{horse.position}
           </span>
-          <span className="text-lg font-bold tabular-nums text-ink md:text-xl">
+          <span className="typo-points">
             {formatPoints(horse.points)}
-            <span className="ml-1 text-xs font-medium text-muted">pts</span>
+            <span className="typo-caption ml-1 font-medium">pts</span>
           </span>
         </div>
 
         <h3
           className={[
-            'font-semibold tracking-tight text-ink transition-colors duration-200 group-hover:text-gold',
-            featured ? 'text-xl md:text-2xl' : 'text-lg',
+            'tracking-tight text-ink transition-colors duration-200 group-hover:text-gold',
+            featured ? 'typo-name-lg' : 'typo-name',
           ].join(' ')}
         >
           {horse.name}
         </h3>
-        <p className="mt-1 text-sm text-muted">{horse.stable}</p>
-        <p className="mt-0.5 text-xs text-muted/80">{horse.owner}</p>
+        <p className="typo-meta mt-1">{horse.stable}</p>
+        <p className="typo-caption mt-0.5">{horse.owner}</p>
       </div>
     </Link>
   )

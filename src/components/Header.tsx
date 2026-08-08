@@ -27,8 +27,8 @@ export function Header() {
               className="h-11 w-auto shrink-0 rounded-[12px] object-contain md:h-12"
             />
             <div className="hidden leading-tight sm:block">
-              <p className="text-sm font-bold tracking-[0.12em] text-ink">ADOPASO</p>
-              <p className="text-[11px] text-muted">Caballos de Paso Fino</p>
+              <p className="typo-nav font-bold tracking-[0.12em] text-ink">ADOPASO</p>
+              <p className="typo-caption">Caballos de Paso Fino</p>
             </div>
           </Link>
 
@@ -43,7 +43,7 @@ export function Header() {
               end={link.to === '/'}
               className={({ isActive }) =>
                 [
-                  'text-sm font-medium tracking-wide transition-colors duration-200',
+                  'typo-nav transition-colors duration-200',
                   isActive ? 'text-gold' : 'text-muted hover:text-ink',
                 ].join(' ')
               }
@@ -86,7 +86,7 @@ export function Header() {
                 onClick={() => setOpen(false)}
                 className={({ isActive }) =>
                   [
-                    'rounded-[10px] px-3 py-3 text-sm font-medium transition-colors duration-200',
+                    'typo-nav rounded-[10px] px-3 py-3 transition-colors duration-200',
                     isActive ? 'bg-surface-elevated text-gold' : 'text-muted hover:text-ink',
                   ].join(' ')
                 }
@@ -95,7 +95,7 @@ export function Header() {
               </NavLink>
             ))}
             <div className="mt-2 flex items-center gap-3 border-t border-border px-3 pt-3">
-              <span className="text-xs text-muted">Síguenos</span>
+              <span className="typo-caption">Síguenos</span>
               <SocialLinks />
             </div>
           </nav>

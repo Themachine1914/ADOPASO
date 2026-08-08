@@ -16,7 +16,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   return (
     <span
       className={[
-        'inline-flex items-center rounded-[8px] border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.1em]',
+        'typo-label inline-flex items-center rounded-[8px] border px-2.5 py-1',
         styles[status],
       ].join(' ')}
     >

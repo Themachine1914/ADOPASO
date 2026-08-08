@@ -13,8 +13,8 @@ function parseYear(value: string | null): Year {
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[12px] border border-border bg-surface p-4">
-      <dt className="text-xs uppercase tracking-[0.14em] text-muted">{label}</dt>
-      <dd className="mt-1 font-semibold text-ink">{value || '—'}</dd>
+      <dt className="typo-label">{label}</dt>
+      <dd className="typo-name mt-1 text-base">{value || '—'}</dd>
     </div>
   )
 }
@@ -29,9 +29,9 @@ export function HorseDetail() {
 
   if (!horse) {
     return (
-      <div className="container-app py-20 text-center">
-        <h1 className="font-display text-3xl font-semibold text-ink">Caballo no encontrado</h1>
-        <Link to="/caballos" className="mt-6 inline-block text-gold hover:text-gold-soft">
+      <div className="container-app page-shell text-center">
+        <h1 className="typo-page">Caballo no encontrado</h1>
+        <Link to="/caballos" className="typo-meta mt-6 inline-block font-medium text-gold hover:text-gold-soft">
           Volver al directorio
         </Link>
       </div>
@@ -64,23 +64,21 @@ export function HorseDetail() {
           <div className="flex flex-col justify-center">
             <Link
               to="/caballos"
-              className="mb-4 text-sm font-medium text-muted transition-colors hover:text-gold"
+              className="typo-meta mb-4 font-medium transition-colors hover:text-gold"
             >
               ← Volver al directorio
             </Link>
             {position ? (
-              <span className="mb-3 inline-flex w-fit items-center rounded-[10px] border border-gold/40 bg-bg px-3 py-1 text-sm font-bold text-gold">
+              <span className="typo-meta mb-3 inline-flex w-fit items-center rounded-[10px] border border-gold/40 bg-bg px-3 py-1 font-bold text-gold">
                 #{position} en {year}
               </span>
             ) : (
-              <span className="mb-3 inline-flex w-fit items-center rounded-[10px] border border-border bg-bg px-3 py-1 text-sm font-medium text-muted">
+              <span className="typo-meta mb-3 inline-flex w-fit items-center rounded-[10px] border border-border bg-bg px-3 py-1">
                 Sin puntuación en {year}
               </span>
             )}
-            <h1 className="font-display text-4xl font-semibold tracking-tight text-ink md:text-5xl">
-              {horse.name}
-            </h1>
-            <p className="mt-3 text-lg text-muted">
+            <h1 className="typo-page">{horse.name}</h1>
+            <p className="typo-lead mt-3">
               {sexLabel(horse.sex)}
               {horse.color ? ` · ${horse.color}` : ''}
               {' · '}
@@ -89,7 +87,7 @@ export function HorseDetail() {
 
             <div className="mt-5 flex flex-wrap gap-2">
               <div className="flex items-center gap-2 rounded-[10px] border border-border bg-bg px-3 py-2">
-                <span className="text-xs text-muted">Cert. virus</span>
+                <span className="typo-caption">Cert. virus</span>
                 <StatusBadge status={virusStatus} />
               </div>
             </div>
@@ -104,11 +102,9 @@ export function HorseDetail() {
         </div>
       </section>
 
-      <section className="container-app py-12 md:py-16">
-        <h2 className="font-display text-2xl font-semibold text-ink md:text-3xl">
-          Identidad y pedigrí
-        </h2>
-        <p className="mt-2 text-sm text-muted">
+      <section className="container-app page-shell">
+        <h2 className="typo-section">Identidad y pedigrí</h2>
+        <p className="typo-meta mt-2">
           Datos de identificación y línea genética del ejemplar.
         </p>
         <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -122,13 +118,11 @@ export function HorseDetail() {
       </section>
 
       <section className="border-t border-border bg-surface/30">
-        <div className="container-app py-12 md:py-16">
+        <div className="container-app page-shell">
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="font-display text-2xl font-semibold text-ink md:text-3xl">
-                Certificado de virus
-              </h2>
-              <p className="mt-2 text-sm text-muted">
+              <h2 className="typo-section">Certificado de virus</h2>
+              <p className="typo-meta mt-2">
                 Prueba EIA (anemia infecciosa equina). Requerido para competencias.
               </p>
             </div>
@@ -137,8 +131,8 @@ export function HorseDetail() {
 
           {!horse.virusCertificate ? (
             <div className="rounded-[12px] border border-border bg-surface px-6 py-10 text-center">
-              <p className="font-semibold text-ink">Sin certificado registrado</p>
-              <p className="mt-2 text-sm text-muted">
+              <p className="typo-name">Sin certificado registrado</p>
+              <p className="typo-meta mt-2">
                 Este caballo no tiene certificado de virus vigente en el sistema.
               </p>
             </div>
@@ -168,18 +162,16 @@ export function HorseDetail() {
         </div>
       </section>
 
-      <section className="container-app py-12 md:py-16">
-        <h2 className="font-display text-2xl font-semibold text-ink md:text-3xl">
-          Historial de competencias
-        </h2>
-        <p className="mt-2 text-sm text-muted">
+      <section className="container-app page-shell">
+        <h2 className="typo-section">Historial de competencias</h2>
+        <p className="typo-meta mt-2">
           Resultados registrados y puntos obtenidos en cada evento.
         </p>
 
         {history.length === 0 ? (
           <div className="mt-8 rounded-[12px] border border-border bg-surface px-6 py-10 text-center">
-            <p className="font-semibold text-ink">Sin competencias registradas</p>
-            <p className="mt-2 text-sm text-muted">
+            <p className="typo-name">Sin competencias registradas</p>
+            <p className="typo-meta mt-2">
               Este caballo aún no tiene resultados en el historial oficial.
             </p>
           </div>
@@ -192,19 +184,19 @@ export function HorseDetail() {
                   className="flex flex-col gap-3 bg-bg/40 px-5 py-4 transition-colors duration-200 hover:bg-surface-elevated sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
-                    <p className="font-semibold text-ink">{entry.competition!.name}</p>
-                    <p className="mt-1 text-sm text-muted">
+                    <p className="typo-name text-base">{entry.competition!.name}</p>
+                    <p className="typo-meta mt-1">
                       {formatDate(entry.competition!.date)} · {entry.competition!.location}
                     </p>
                   </div>
                   <div className="flex items-center gap-6">
                     <div className="text-left sm:text-right">
-                      <p className="text-xs uppercase tracking-[0.12em] text-muted">Lugar</p>
-                      <p className="font-bold text-ink">{placeLabel(entry.place)}</p>
+                      <p className="typo-label">Lugar</p>
+                      <p className="typo-name text-base">{placeLabel(entry.place)}</p>
                     </div>
                     <div className="text-left sm:text-right">
-                      <p className="text-xs uppercase tracking-[0.12em] text-muted">Puntos</p>
-                      <p className="text-lg font-bold tabular-nums text-gold">
+                      <p className="typo-label">Puntos</p>
+                      <p className="typo-points text-gold">
                         {formatPoints(entry.points)}
                       </p>
                     </div>
