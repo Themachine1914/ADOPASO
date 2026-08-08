@@ -4,6 +4,7 @@ import type {
   VirusCertificate,
   Year,
 } from '../types'
+import { matchesSearch } from '../lib/normalize'
 import { competitions } from './competitions'
 
 const horsePhotos = [
@@ -387,29 +388,18 @@ export const horses: Horse[] = [
   }),
 ]
 
-function normalize(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .trim()
-}
-
 export function getHorseById(id: string): Horse | undefined {
   return horses.find((h) => h.id === id)
 }
 
 export function searchHorses(query: string): Horse[] {
-  const q = normalize(query)
   const list = [...horses].sort((a, b) => a.name.localeCompare(b.name, 'es'))
-  if (!q) return list
-
-  return list.filter((horse) => {
-    const haystack = normalize(
+  return list.filter((horse) =>
+    matchesSearch(
       `${horse.name} ${horse.owner} ${horse.stable} ${horse.sireName} ${horse.damName} ${horse.color}`,
-    )
-    return haystack.includes(q)
-  })
+      query,
+    ),
+  )
 }
 
 export function getRanking(year: Year): RankedHorse[] {

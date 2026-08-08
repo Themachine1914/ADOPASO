@@ -15,7 +15,7 @@ export function RankTable({ horses, year }: RankTableProps) {
           <Link
             key={horse.id}
             to={`/caballo/${horse.id}?year=${year}`}
-            className="flex items-center gap-3 rounded-[12px] border border-border bg-surface p-3 transition-all duration-200 hover:border-gold/40"
+            className="flex items-center gap-3 rounded-[12px] border border-border bg-surface p-3 shadow-none transition-all duration-200 hover:-translate-y-0.5 hover:border-gold/50 hover:bg-surface-elevated hover:shadow-[0_10px_28px_rgba(0,0,0,0.28)]"
           >
             <span className="typo-meta w-8 text-center font-bold text-gold">
               {horse.position}
@@ -54,10 +54,10 @@ export function RankTable({ horses, year }: RankTableProps) {
             {horses.map((horse) => (
               <tr
                 key={horse.id}
-                className="group border-b border-border/70 transition-colors duration-200 last:border-b-0 hover:bg-surface-elevated"
+                className="group border-b border-border/70 transition-all duration-200 last:border-b-0 hover:bg-surface-elevated"
               >
                 <td className="px-5 py-4">
-                  <span className="typo-meta inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-border font-bold text-gold">
+                  <span className="typo-meta inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-border font-bold text-gold transition-colors group-hover:border-gold/40">
                     {horse.position}
                   </span>
                 </td>
@@ -71,7 +71,7 @@ export function RankTable({ horses, year }: RankTableProps) {
                       src={horse.photo}
                       alt=""
                       loading="lazy"
-                      className="h-12 w-12 rounded-[10px] object-cover"
+                      className="h-12 w-12 rounded-[10px] object-cover ring-0 transition-all duration-200 group-hover:ring-2 group-hover:ring-gold/30"
                     />
                     <span className="typo-name text-base transition-colors duration-200 group-hover:text-gold">
                       {horse.name}
@@ -83,7 +83,9 @@ export function RankTable({ horses, year }: RankTableProps) {
                   <p className="typo-caption">{horse.stable}</p>
                 </td>
                 <td className="px-5 py-4 text-right">
-                  <span className="typo-points">{formatPoints(horse.points)}</span>
+                  <span className="typo-points transition-colors group-hover:text-gold">
+                    {formatPoints(horse.points)}
+                  </span>
                 </td>
               </tr>
             ))}

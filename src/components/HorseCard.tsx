@@ -11,7 +11,7 @@ export function HorseCard({ horse, featured = false }: HorseCardProps) {
   return (
     <Link
       to={`/caballo/${horse.id}?year=2026`}
-      className="group block rounded-[12px] bg-surface transition-transform duration-200 hover:-translate-y-1"
+      className="group block rounded-[12px] bg-surface shadow-none transition-all duration-200 hover:-translate-y-1 hover:bg-surface-elevated hover:shadow-[0_14px_36px_rgba(0,0,0,0.28)]"
     >
       <div
         className={[
