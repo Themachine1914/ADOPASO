@@ -56,8 +56,33 @@ export interface CampoForm {
   soloNuevo?: boolean
   /** Al escribir un código, busca el nombre en otra tabla y lo copia en `campo`. */
   buscaNombre?: { tabla: string; columna: string; campo: string }
+  /** Lista con buscador. Al elegir, puede copiar el nombre en otro campo. */
+  buscaLista?: BuscaLista
+  /** Se guarda, pero no se muestra: lo llena `buscaLista`. */
+  oculto?: boolean
   /** Valor inicial en un registro nuevo; 'hoy' pone la fecha de hoy. */
   inicial?: string
+}
+
+export interface BuscaLista {
+  tabla: string
+  valor: string
+  etiqueta: string
+  /** El valor es numérico (código de socio o de asociación). */
+  valorNumero?: boolean
+  /** Columna extra para buscar y mostrar, como la abreviatura. */
+  extra?: string
+  filtro?: { columna: string; valores: string[] }
+  /** Campo donde se copia el nombre al elegir. */
+  copiaEn?: string
+  placeholder?: string
+  crear?: {
+    slug: string
+    sexo?: 'M' | 'H'
+    /** El registro nuevo puede guardarse sin sus propios padres. */
+    padresOpcionales?: boolean
+    titulo: string
+  }
 }
 
 const CAMPOS_PERSONA: CampoForm[] = [
@@ -117,37 +142,83 @@ const FORM_CABALLO: CampoForm[] = [
   {
     clave: 'asociacion_codigo',
     etiqueta: 'Asociación',
-    tipo: 'opciones',
-    opcionesDe: { tabla: 'asociaciones', valor: 'codigo', etiqueta: 'nombre' },
+    tipo: 'numero',
     inicial: '1',
+    ayuda: 'Busque por nombre o abreviatura. Si no existe, use Agregar nuevo.',
+    buscaLista: {
+      tabla: 'asociaciones',
+      valor: 'codigo',
+      etiqueta: 'nombre',
+      valorNumero: true,
+      extra: 'abreviatura',
+      placeholder: 'Buscar asociación',
+      crear: { slug: 'asociaciones', titulo: 'Nueva asociación' },
+    },
   },
   {
     clave: 'padre_codigo',
-    etiqueta: 'Código del padre',
-    ayuda: 'Al escribir el código se completa el nombre, y al guardar se arman abuelos y bisabuelos.',
-    buscaNombre: { tabla: 'caballos', columna: 'codigo', campo: 'padre' },
+    etiqueta: 'Padre',
+    requerido: true,
+    ayuda: 'Tiene que estar registrado. Busque por nombre o código, o agregue uno nuevo.',
+    buscaLista: {
+      tabla: 'caballos',
+      valor: 'codigo',
+      etiqueta: 'nombre',
+      filtro: { columna: 'sexo', valores: ['M'] },
+      copiaEn: 'padre',
+      placeholder: 'Buscar padre',
+      crear: { slug: 'caballos', sexo: 'M', padresOpcionales: true, titulo: 'Nuevo padre' },
+    },
   },
-  { clave: 'padre', etiqueta: 'Nombre del padre' },
+  { clave: 'padre', etiqueta: 'Nombre del padre', oculto: true },
   {
     clave: 'madre_codigo',
-    etiqueta: 'Código de la madre',
-    buscaNombre: { tabla: 'caballos', columna: 'codigo', campo: 'madre' },
+    etiqueta: 'Madre',
+    requerido: true,
+    ayuda: 'Tiene que estar registrada. Busque por nombre o código, o agregue una nueva.',
+    buscaLista: {
+      tabla: 'caballos',
+      valor: 'codigo',
+      etiqueta: 'nombre',
+      filtro: { columna: 'sexo', valores: ['H'] },
+      copiaEn: 'madre',
+      placeholder: 'Buscar madre',
+      crear: { slug: 'caballos', sexo: 'H', padresOpcionales: true, titulo: 'Nueva madre' },
+    },
   },
-  { clave: 'madre', etiqueta: 'Nombre de la madre' },
+  { clave: 'madre', etiqueta: 'Nombre de la madre', oculto: true },
   {
     clave: 'expositor_codigo',
-    etiqueta: 'Código del propietario (socio)',
+    etiqueta: 'Propietario',
     tipo: 'numero',
-    buscaNombre: { tabla: 'socios', columna: 'codigo', campo: 'expositor' },
+    ayuda: 'Elija un socio. Si no existe, use Agregar nuevo.',
+    buscaLista: {
+      tabla: 'socios',
+      valor: 'codigo',
+      etiqueta: 'nombre',
+      valorNumero: true,
+      copiaEn: 'expositor',
+      placeholder: 'Buscar socio',
+      crear: { slug: 'socios', titulo: 'Nuevo propietario' },
+    },
   },
-  { clave: 'expositor', etiqueta: 'Propietario' },
+  { clave: 'expositor', etiqueta: 'Propietario', oculto: true },
   {
     clave: 'criador_codigo',
-    etiqueta: 'Código del criador',
+    etiqueta: 'Criador',
     tipo: 'numero',
-    buscaNombre: { tabla: 'criadores', columna: 'codigo', campo: 'criador' },
+    ayuda: 'Elija un criador. Si no existe, use Agregar nuevo.',
+    buscaLista: {
+      tabla: 'criadores',
+      valor: 'codigo',
+      etiqueta: 'nombre',
+      valorNumero: true,
+      copiaEn: 'criador',
+      placeholder: 'Buscar criador',
+      crear: { slug: 'criadores', titulo: 'Nuevo criador' },
+    },
   },
-  { clave: 'criador', etiqueta: 'Criador' },
+  { clave: 'criador', etiqueta: 'Criador', oculto: true },
   { clave: 'senas', etiqueta: 'Señas particulares', tipo: 'area', completo: true },
   { clave: 'adn', etiqueta: 'ADN' },
   { clave: 'microchip', etiqueta: 'Microchip' },

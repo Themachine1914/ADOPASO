@@ -1,4 +1,4 @@
-import type { CampoForm, Categoria } from '../admin/categorias'
+import type { BuscaLista, CampoForm, Categoria } from '../admin/categorias'
 import { supabase } from './supabase'
 
 export type Valores = Record<string, string>
@@ -72,6 +72,81 @@ export async function cargarOpciones(
   }))
 }
 
+export interface OpcionBusqueda {
+  valor: string
+  etiqueta: string
+  extra: string | null
+}
+
+function limpiarBusqueda(texto: string): string {
+  return texto.replace(/[,()%*_\\"]/g, ' ').trim()
+}
+
+function claveConsulta(pk: string, clave: string): string | number {
+  if (pk === 'id' || (pk === 'codigo' && /^\d+$/.test(clave))) return Number(clave)
+  return clave
+}
+
+/** Filas de una lista con buscador. Sin texto, devuelve las primeras por nombre. */
+export async function buscarLista(
+  busca: BuscaLista,
+  texto: string,
+  excluir?: string,
+): Promise<OpcionBusqueda[]> {
+  const columnas = [busca.valor, busca.etiqueta, busca.extra].filter((c, i, todas) => c && todas.indexOf(c) === i)
+  let consulta = supabase.from(busca.tabla).select(columnas.join(', '))
+  if (busca.filtro) consulta = consulta.in(busca.filtro.columna, busca.filtro.valores)
+  if (excluir) consulta = consulta.neq(busca.valor, busca.valorNumero ? Number(excluir) : excluir)
+  const limpio = limpiarBusqueda(texto)
+  if (limpio) {
+    const partes = [`${busca.etiqueta}.ilike.%${limpio}%`]
+    if (busca.valor !== busca.etiqueta) {
+      if (busca.valorNumero && /^\d+$/.test(limpio)) partes.push(`${busca.valor}.eq.${limpio}`)
+      else if (!busca.valorNumero) partes.push(`${busca.valor}.ilike.%${limpio}%`)
+    }
+    if (busca.extra) partes.push(`${busca.extra}.ilike.%${limpio}%`)
+    consulta = consulta.or(partes.join(','))
+  }
+  const { data, error } = await consulta.order(busca.etiqueta).limit(20)
+  if (error) throw error
+  return ((data ?? []) as unknown as Fila[]).map((row) => ({
+    valor: String(row[busca.valor] ?? ''),
+    etiqueta: String(row[busca.etiqueta] ?? row[busca.valor] ?? ''),
+    extra: busca.extra && row[busca.extra] != null && String(row[busca.extra]).trim() ? String(row[busca.extra]) : null,
+  }))
+}
+
+/** Nombre de un valor ya elegido, para mostrarlo al abrir el formulario. */
+export async function etiquetaDeLista(busca: BuscaLista, valor: string): Promise<string | null> {
+  if (!valor.trim()) return null
+  const { data, error } = await supabase
+    .from(busca.tabla)
+    .select(busca.etiqueta)
+    .eq(busca.valor, busca.valorNumero ? Number(valor) : valor)
+    .limit(1)
+  if (error) throw error
+  const nombre = (data?.[0] as unknown as Fila | undefined)?.[busca.etiqueta]
+  return typeof nombre === 'string' && nombre.trim() ? nombre : null
+}
+
+/** Lee las columnas pedidas de un registro recién creado. */
+export async function leerRegistro(
+  tabla: string,
+  pk: string,
+  clave: string,
+  columnas: string[],
+): Promise<Record<string, string> | null> {
+  const { data, error } = await supabase
+    .from(tabla)
+    .select(columnas.join(', '))
+    .eq(pk, claveConsulta(pk, clave))
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  const row = data as unknown as Fila
+  return Object.fromEntries(columnas.map((c) => [c, row[c] == null ? '' : String(row[c])]))
+}
+
 /** Nombre del registro con ese código, o null si no existe. */
 export async function buscarNombre(
   busca: NonNullable<CampoForm['buscaNombre']>,
@@ -114,14 +189,29 @@ function aFila(campos: CampoForm[], valores: Valores, creando: boolean): Fila {
   return fila
 }
 
-export function validar(campos: CampoForm[], valores: Valores, creando: boolean): string | null {
+export function validar(
+  campos: CampoForm[],
+  valores: Valores,
+  creando: boolean,
+  opciones?: { padresOpcionales?: boolean },
+): string | null {
+  const padresLibres = Boolean(opciones?.padresOpcionales) || !creando
   for (const campo of campos) {
-    if (campo.soloNuevo && !creando) continue
+    if (campo.oculto || (campo.soloNuevo && !creando)) continue
     const texto = (valores[campo.clave] ?? '').trim()
-    if (campo.requerido && !texto) return `Falta «${campo.etiqueta}».`
+    const esPadre = campo.clave === 'padre_codigo' || campo.clave === 'madre_codigo'
+    const requerido = campo.requerido && !(esPadre && padresLibres)
+    if (requerido && !texto) return `Falta «${campo.etiqueta}».`
     if (texto && campo.tipo === 'numero' && !Number.isFinite(Number(texto))) {
       return `«${campo.etiqueta}» debe ser un número.`
     }
+  }
+  const padre = (valores.padre_codigo ?? '').trim().toUpperCase()
+  const madre = (valores.madre_codigo ?? '').trim().toUpperCase()
+  if (padre && madre && padre === madre) return 'El padre y la madre no pueden ser el mismo caballo.'
+  const propio = (valores.codigo ?? '').trim().toUpperCase()
+  if (propio && (padre === propio || madre === propio)) {
+    return 'Un caballo no puede ser su propio padre o su propia madre.'
   }
   const inicio = valores.fecha
   const fin = valores.fecha_fin
