@@ -8,9 +8,19 @@ export function Footer() {
             Asociación Dominicana de Caballos de Paso
           </p>
         </div>
-        <p className="typo-caption">
-          Ranking Oficial {new Date().getFullYear()} · República Dominicana
-        </p>
+        <div className="flex flex-col items-start gap-1 md:items-end">
+          <p className="typo-caption">
+            Ranking Oficial {new Date().getFullYear()} · República Dominicana
+          </p>
+          <a
+            href="https://www.facilapp.lat"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="typo-caption transition-colors hover:text-gold"
+          >
+            Desarrollada por FacilApp
+          </a>
+        </div>
       </div>
     </footer>
   )
