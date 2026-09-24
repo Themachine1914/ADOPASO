@@ -16,8 +16,9 @@ export function Footer() {
             href="https://www.facilapp.lat"
             target="_blank"
             rel="noopener noreferrer"
-            className="typo-caption transition-colors hover:text-gold"
+            className="inline-flex items-center gap-1.5 typo-caption transition-colors hover:text-gold"
           >
+            <img src="/logo-facilapp.png" alt="" className="h-7 w-auto rounded-[5px] bg-white" />
             Desarrollada por FacilApp
           </a>
         </div>
