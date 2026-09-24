@@ -18,7 +18,11 @@ export function Footer() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 typo-caption transition-colors hover:text-gold"
           >
-            <img src="/logo-facilapp.png" alt="" className="h-7 w-auto rounded-[5px] bg-white" />
+            <img
+              src="/logo-facilapp-mark.png"
+              alt=""
+              className="size-4 shrink-0 rounded-[3px] bg-white"
+            />
             Desarrollada por FacilApp
           </a>
         </div>
