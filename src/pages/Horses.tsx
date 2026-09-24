@@ -1,38 +1,43 @@
-import { useDeferredValue, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
-import { FilterChips } from '../components/FilterChips'
 import { PageHeader } from '../components/PageHeader'
 import { SearchInput } from '../components/SearchInput'
-import { searchHorses } from '../data/horses'
-import { formatPoints } from '../lib/format'
-import type { Year } from '../types'
-
-const YEAR: Year = 2026
-
-type RankingFilter = 'all' | 'ranked' | 'unranked'
-
-const rankingOptions: { value: RankingFilter; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'ranked', label: 'Con ranking' },
-  { value: 'unranked', label: 'Sin ranking' },
-]
+import { HorseGridSkeleton } from '../components/Skeleton'
+import { buscarCaballos } from '../lib/publico'
+import { supabaseConfigurado } from '../lib/supabase'
+import type { CaballoPublico } from '../types/publico'
 
 export function Horses() {
   const [query, setQuery] = useState('')
-  const [rankingFilter, setRankingFilter] = useState<RankingFilter>('all')
   const deferredQuery = useDeferredValue(query)
+  const [results, setResults] = useState<CaballoPublico[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const results = useMemo(() => {
-    return searchHorses(deferredQuery).filter((horse) => {
-      const points = horse.pointsByYear[YEAR] ?? 0
-      if (rankingFilter === 'ranked') return points > 0
-      if (rankingFilter === 'unranked') return points <= 0
-      return true
-    })
-  }, [deferredQuery, rankingFilter])
+  useEffect(() => {
+    if (!supabaseConfigurado) {
+      setLoading(false)
+      setError('Falta la conexión con Supabase.')
+      return
+    }
+    let cancel = false
+    setLoading(true)
+    buscarCaballos(deferredQuery)
+      .then((filas) => {
+        if (!cancel) setResults(filas)
+      })
+      .catch((err: Error) => {
+        if (!cancel) setError(err.message)
+      })
+      .finally(() => {
+        if (!cancel) setLoading(false)
+      })
+    return () => {
+      cancel = true
+    }
+  }, [deferredQuery])
 
-  const isFiltering = Boolean(query.trim()) || rankingFilter !== 'all'
   const searching = query !== deferredQuery
 
   return (
@@ -40,104 +45,70 @@ export function Horses() {
       <PageHeader
         eyebrow="Directorio"
         title="Caballos"
-        description="Busca cualquier caballo registrado en ADOPASO, esté o no en el ranking de la temporada."
+        description="Busca cualquier ejemplar del registro y entra a su ficha para ver puntos y resultados."
       />
 
-      <div className="mb-6 space-y-4">
+      <div className="mb-6">
         <SearchInput
           value={query}
           onChange={setQuery}
           label="Buscar caballos"
-          placeholder="Nombre, dueño, criadero o pedigrí…"
-        />
-        <FilterChips
-          label="Filtro de ranking"
-          value={rankingFilter}
-          options={rankingOptions}
-          onChange={setRankingFilter}
+          placeholder="Nombre, código, expositor, criador o pedigrí…"
         />
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-4">
         <p className="typo-meta">
-          {searching
+          {loading || searching
             ? 'Buscando…'
-            : `${results.length} ${results.length === 1 ? 'caballo' : 'caballos'}`}
-          {!searching && isFiltering ? ' con estos filtros' : !searching ? ' registrados' : ''}
+            : `${results.length} ${results.length === 1 ? 'caballo' : 'caballos'}${deferredQuery.trim() ? ' encontrados' : ' recientes'}`}
         </p>
-        {isFiltering ? (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery('')
-              setRankingFilter('all')
-            }}
-            className="typo-meta font-medium text-gold transition-colors hover:text-gold-soft"
-          >
-            Limpiar filtros
-          </button>
-        ) : null}
       </div>
 
-      {results.length === 0 ? (
+      {error ? (
+        <EmptyState title="No se pudo cargar el directorio" description={error} />
+      ) : loading ? (
+        <HorseGridSkeleton />
+      ) : results.length === 0 ? (
         <EmptyState
           title="No encontramos caballos"
-          description="Prueba con otro nombre, dueño o criadero, o cambia el filtro de ranking."
+          description="Prueba con el nombre, el código de registro o el expositor."
           action={
-            <button
-              type="button"
-              onClick={() => {
-                setQuery('')
-                setRankingFilter('all')
-              }}
-              className="typo-btn rounded-[12px] bg-gold px-5 py-2.5 text-bg transition-colors hover:bg-gold-soft"
-            >
-              Ver todos los caballos
-            </button>
+            query ? (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                className="typo-btn rounded-[12px] bg-gold px-5 py-2.5 text-bg transition-colors hover:bg-gold-soft"
+              >
+                Limpiar búsqueda
+              </button>
+            ) : null
           }
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-          {results.map((horse) => {
-            const points = horse.pointsByYear[YEAR] ?? 0
-            const inRanking = points > 0
-
-            return (
+        <div className="overflow-hidden rounded-[12px] border border-border">
+          <div className="hidden grid-cols-[7rem_1fr_8rem_1.2fr] gap-3 border-b border-border bg-surface px-4 py-3 md:grid">
+            <span className="typo-label">Código</span>
+            <span className="typo-label">Caballo</span>
+            <span className="typo-label">Sexo / color</span>
+            <span className="typo-label">Expositor</span>
+          </div>
+          <div className="divide-y divide-border">
+            {results.map((horse) => (
               <Link
-                key={horse.id}
-                to={`/caballo/${horse.id}?year=${YEAR}`}
-                className="group flex overflow-hidden rounded-[12px] border border-border bg-surface transition-all duration-200 hover:-translate-y-0.5 hover:border-gold/50 hover:bg-surface-elevated hover:shadow-[0_12px_32px_rgba(0,0,0,0.28)] sm:block"
+                key={horse.codigo}
+                to={`/caballo/${encodeURIComponent(horse.codigo)}`}
+                className="grid gap-1 bg-bg/40 px-4 py-3 transition-colors duration-200 hover:bg-surface-elevated md:grid-cols-[7rem_1fr_8rem_1.2fr] md:items-center md:gap-3"
               >
-                <div className="h-24 w-24 shrink-0 overflow-hidden sm:aspect-[5/3] sm:h-auto sm:w-full">
-                  <img
-                    src={horse.photo}
-                    alt={horse.name}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                  />
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col justify-center p-3 sm:p-4">
-                  <div className="mb-1 flex items-start justify-between gap-2 sm:mb-2">
-                    <h2 className="typo-name truncate text-base transition-colors group-hover:text-gold sm:text-[1.05rem]">
-                      {horse.name}
-                    </h2>
-                    <span
-                      className={[
-                        'typo-label shrink-0 rounded-[8px] px-2 py-0.5 normal-case tracking-[0.08em]',
-                        inRanking
-                          ? 'bg-gold/15 text-gold'
-                          : 'bg-border/60 text-muted',
-                      ].join(' ')}
-                    >
-                      {inRanking ? `${formatPoints(points)} pts` : 'Sin ranking'}
-                    </span>
-                  </div>
-                  <p className="typo-meta truncate">{horse.stable}</p>
-                  <p className="typo-caption mt-0.5 truncate">{horse.owner}</p>
-                </div>
+                <p className="typo-caption text-gold">{horse.codigo}</p>
+                <p className="typo-name truncate text-base">{horse.nombre}</p>
+                <p className="typo-meta truncate">
+                  {[horse.sexo, horse.color].filter(Boolean).join(' · ') || '—'}
+                </p>
+                <p className="typo-meta truncate">{horse.expositor || horse.criador || '—'}</p>
               </Link>
-            )
-          })}
+            ))}
+          </div>
         </div>
       )}
     </div>

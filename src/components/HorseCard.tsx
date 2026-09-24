@@ -1,53 +1,50 @@
 import { Link } from 'react-router-dom'
-import type { RankedHorse } from '../types'
+import type { EntradaRanking } from '../types/publico'
 import { formatPoints } from '../lib/format'
 
 interface HorseCardProps {
-  horse: RankedHorse
+  horse: EntradaRanking
+  year: number
   featured?: boolean
 }
 
-export function HorseCard({ horse, featured = false }: HorseCardProps) {
+export function HorseCard({ horse, year, featured = false }: HorseCardProps) {
+  const accent =
+    horse.position === 1
+      ? 'border-gold/50'
+      : horse.position === 2
+        ? 'border-border'
+        : 'border-flag-blue/40'
+
   return (
     <Link
-      to={`/caballo/${horse.id}?year=2026`}
-      className="group block rounded-[12px] bg-surface shadow-none transition-all duration-200 hover:-translate-y-1 hover:bg-surface-elevated hover:shadow-[0_14px_36px_rgba(0,0,0,0.28)]"
+      to={`/caballo/${encodeURIComponent(horse.id)}?year=${year}`}
+      className={[
+        'group flex overflow-hidden rounded-[12px] border bg-surface transition-all duration-200 hover:-translate-y-0.5 hover:bg-surface-elevated hover:shadow-[0_14px_36px_rgba(0,0,0,0.28)]',
+        accent,
+      ].join(' ')}
     >
-      <div
-        className={[
-          'overflow-hidden rounded-t-[12px]',
-          featured ? 'aspect-[4/3]' : 'aspect-[5/4]',
-        ].join(' ')}
-      >
-        <img
-          src={horse.photo}
-          alt={horse.name}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-        />
+      <div className="flex w-16 shrink-0 items-center justify-center border-r border-border bg-bg font-display text-3xl font-semibold text-gold">
+        {horse.position}
       </div>
-
-      <div className="p-5 md:p-6">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="typo-meta inline-flex h-8 min-w-8 items-center justify-center rounded-[10px] bg-bg px-2 font-bold text-gold">
-            #{horse.position}
-          </span>
-          <span className="typo-points">
-            {formatPoints(horse.points)}
-            <span className="typo-caption ml-1 font-medium">pts</span>
-          </span>
-        </div>
-
+      <div className="min-w-0 flex-1 p-5">
+        <p className="typo-label">{horse.position === 1 ? 'Primero' : horse.position === 2 ? 'Segundo' : 'Tercero'}</p>
         <h3
           className={[
-            'tracking-tight text-ink transition-colors duration-200 group-hover:text-gold',
+            'mt-2 tracking-tight text-ink transition-colors duration-200 group-hover:text-gold',
             featured ? 'typo-name-lg' : 'typo-name',
           ].join(' ')}
         >
           {horse.name}
         </h3>
-        <p className="typo-meta mt-1">{horse.stable}</p>
-        <p className="typo-caption mt-0.5">{horse.owner}</p>
+        <p className="typo-meta mt-1 truncate">{horse.stable !== '—' ? horse.stable : horse.owner}</p>
+        {horse.stable !== '—' && horse.owner !== '—' ? (
+          <p className="typo-caption truncate">{horse.owner}</p>
+        ) : null}
+        <p className="typo-points mt-4">
+          {formatPoints(horse.points)}
+          <span className="typo-caption ml-1 font-medium">pts</span>
+        </p>
       </div>
     </Link>
   )

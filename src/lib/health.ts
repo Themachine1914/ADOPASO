@@ -40,12 +40,18 @@ export function healthStatusLabel(status: HealthStatus): string {
 }
 
 export function sexLabel(sex: string): string {
-  switch (sex) {
+  switch (sex.trim().toLowerCase()) {
     case 'macho':
+    case 'm':
+    case 's':
       return 'Macho'
     case 'yegua':
+    case 'h':
+    case 'f':
       return 'Yegua'
     case 'capon':
+    case 'capón':
+    case 'c':
       return 'Castrado / Capón'
     default:
       return sex

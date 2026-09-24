@@ -23,3 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Datos fuente con información personal de socios (se importan a Supabase, no van a Git)
+Todas las estadísticas/
+
+# Generados localmente
+graphify-out/
+__pycache__/
+supabase/.temp/

@@ -1,40 +1,44 @@
 import { Link } from 'react-router-dom'
-import type { RankedHorse, Year } from '../types'
-import { formatPoints } from '../lib/format'
+import type { EntradaRanking } from '../types/publico'
+import { formatPoints, placeLabel } from '../lib/format'
 
 interface RankTableProps {
-  horses: RankedHorse[]
-  year: Year
+  horses: EntradaRanking[]
+  year: number
+  showPlace?: boolean
 }
 
-export function RankTable({ horses, year }: RankTableProps) {
+function Meta({ horse }: { horse: EntradaRanking }) {
+  const bits = [horse.owner !== '—' ? horse.owner : '', horse.stable !== '—' ? horse.stable : ''].filter(
+    Boolean,
+  )
+  return bits.length ? bits.join(' · ') : 'Sin expositor registrado'
+}
+
+export function RankTable({ horses, year, showPlace = false }: RankTableProps) {
   return (
     <>
-      <div className="space-y-3 md:hidden">
+      <div className="space-y-2 md:hidden">
         {horses.map((horse) => (
           <Link
             key={horse.id}
-            to={`/caballo/${horse.id}?year=${year}`}
-            className="flex items-center gap-3 rounded-[12px] border border-border bg-surface p-3 shadow-none transition-all duration-200 hover:-translate-y-0.5 hover:border-gold/50 hover:bg-surface-elevated hover:shadow-[0_10px_28px_rgba(0,0,0,0.28)]"
+            to={`/caballo/${encodeURIComponent(horse.id)}?year=${year}`}
+            className="flex items-center gap-3 rounded-[12px] border border-border bg-surface px-3 py-3 transition-colors duration-200 hover:border-gold/50 hover:bg-surface-elevated"
           >
-            <span className="typo-meta w-8 text-center font-bold text-gold">
+            <span className="w-8 shrink-0 text-center font-display text-xl font-semibold text-gold">
               {horse.position}
             </span>
-            <img
-              src={horse.photo}
-              alt=""
-              loading="lazy"
-              className="h-14 w-14 rounded-[10px] object-cover"
-            />
             <div className="min-w-0 flex-1">
               <p className="typo-name truncate text-base">{horse.name}</p>
               <p className="typo-caption truncate">
-                {horse.owner} · {horse.stable}
+                <Meta horse={horse} />
               </p>
             </div>
             <div className="text-right">
               <p className="typo-points">{formatPoints(horse.points)}</p>
-              <p className="typo-caption">pts</p>
+              <p className="typo-caption">
+                {showPlace && horse.mejorPuesto ? placeLabel(horse.mejorPuesto) : 'pts'}
+              </p>
             </div>
           </Link>
         ))}
@@ -44,45 +48,42 @@ export function RankTable({ horses, year }: RankTableProps) {
         <table className="w-full border-collapse text-left">
           <thead className="bg-surface">
             <tr className="border-b border-border">
-              <th className="typo-label px-5 py-4 font-medium">Pos</th>
-              <th className="typo-label px-5 py-4 font-medium">Caballo</th>
-              <th className="typo-label px-5 py-4 font-medium">Dueño / Criadero</th>
-              <th className="typo-label px-5 py-4 text-right font-medium">Puntos</th>
+              <th className="typo-label px-5 py-3 font-medium">Pos</th>
+              <th className="typo-label px-5 py-3 font-medium">Caballo</th>
+              <th className="typo-label px-5 py-3 font-medium">Expositor / Criador</th>
+              <th className="typo-label px-5 py-3 text-right font-medium">Salidas</th>
+              <th className="typo-label px-5 py-3 text-right font-medium">Puntos</th>
             </tr>
           </thead>
           <tbody className="bg-bg">
             {horses.map((horse) => (
               <tr
                 key={horse.id}
-                className="group border-b border-border/70 transition-all duration-200 last:border-b-0 hover:bg-surface-elevated"
+                className="group border-b border-border/70 transition-colors duration-200 last:border-b-0 hover:bg-surface-elevated"
               >
-                <td className="px-5 py-4">
-                  <span className="typo-meta inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-border font-bold text-gold transition-colors group-hover:border-gold/40">
-                    {horse.position}
-                  </span>
+                <td className="px-5 py-3">
+                  <span className="font-display text-lg font-semibold text-gold">{horse.position}</span>
                 </td>
-                <td className="px-5 py-4">
+                <td className="px-5 py-3">
                   <Link
-                    to={`/caballo/${horse.id}?year=${year}`}
-                    className="flex items-center gap-3"
+                    to={`/caballo/${encodeURIComponent(horse.id)}?year=${year}`}
+                    className="typo-name text-base transition-colors duration-200 group-hover:text-gold"
                     aria-label={`Ver ficha de ${horse.name}, posición ${horse.position}, ${formatPoints(horse.points)} puntos`}
                   >
-                    <img
-                      src={horse.photo}
-                      alt=""
-                      loading="lazy"
-                      className="h-12 w-12 rounded-[10px] object-cover ring-0 transition-all duration-200 group-hover:ring-2 group-hover:ring-gold/30"
-                    />
-                    <span className="typo-name text-base transition-colors duration-200 group-hover:text-gold">
-                      {horse.name}
-                    </span>
+                    {horse.name}
+                    {horse.campeonatos > 0 ? (
+                      <span className="typo-caption ml-2 font-medium text-gold">
+                        {horse.campeonatos === 1 ? '1 campeonato' : `${horse.campeonatos} campeonatos`}
+                      </span>
+                    ) : null}
                   </Link>
                 </td>
-                <td className="px-5 py-4">
+                <td className="px-5 py-3">
                   <p className="typo-meta text-ink">{horse.owner}</p>
                   <p className="typo-caption">{horse.stable}</p>
                 </td>
-                <td className="px-5 py-4 text-right">
+                <td className="px-5 py-3 text-right typo-meta">{horse.salidas}</td>
+                <td className="px-5 py-3 text-right">
                   <span className="typo-points transition-colors group-hover:text-gold">
                     {formatPoints(horse.points)}
                   </span>

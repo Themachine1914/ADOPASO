@@ -1,39 +1,27 @@
-import type { Year } from '../types'
-
-const years: Year[] = [2026, 2025]
-
 interface YearFilterProps {
-  value: Year
-  onChange: (year: Year) => void
+  value: number
+  years: number[]
+  onChange: (year: number) => void
 }
 
-export function YearFilter({ value, onChange }: YearFilterProps) {
+export function YearFilter({ value, years, onChange }: YearFilterProps) {
+  if (years.length === 0) return null
+
   return (
-    <div
-      className="inline-flex items-center gap-1 rounded-[12px] border border-border bg-surface p-1"
-      role="radiogroup"
-      aria-label="Filtrar por año"
-    >
-      {years.map((year) => {
-        const active = year === value
-        return (
-          <button
-            key={year}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            onClick={() => onChange(year)}
-            className={[
-              'typo-btn min-w-[4.5rem] rounded-[10px] px-4 py-2 transition-all duration-200',
-              active
-                ? 'bg-gold text-bg shadow-[0_0_0_1px_rgba(212,175,55,0.35)]'
-                : 'text-muted hover:text-ink',
-            ].join(' ')}
-          >
+    <label className="inline-flex items-center gap-2">
+      <span className="typo-label">Año</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        aria-label="Filtrar por año"
+        className="typo-btn min-w-[7rem] rounded-[12px] border border-border bg-surface px-3 py-2.5 text-ink transition-colors duration-200 focus:border-gold/50 focus:outline-none"
+      >
+        {years.map((year) => (
+          <option key={year} value={year}>
             {year}
-          </button>
-        )
-      })}
-    </div>
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
