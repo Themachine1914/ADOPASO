@@ -10,25 +10,31 @@ import { SearchInput } from '../components/SearchInput'
 import { RankTableSkeleton } from '../components/Skeleton'
 import { YearFilter } from '../components/YearFilter'
 import { matchesSearch } from '../lib/normalize'
+import {
+  CAMPEONATOS,
+  MODALIDADES,
+  SEXOS,
+  etiquetaCampeonato,
+  etiquetaModalidad,
+  etiquetaSexo,
+  type CampeonatoEdad,
+  type Modalidad,
+  type SexoEjemplar,
+} from '../lib/campeonato'
 import { supabaseConfigurado } from '../lib/supabase'
 import {
   ROLES_PERSONA,
   anioPorDefecto,
   cargarAniosPublicos,
   cargarCalendario,
-  cargarCategorias,
-  cargarClases,
   cargarClasesJinetes,
-  cargarRankingCategoria,
+  cargarRankingCampeonato,
   cargarRankingCompetencia,
-  cargarRankingGeneral,
   cargarRankingPersonas,
   esRolPersona,
 } from '../lib/publico'
 import type {
   AnioRanking,
-  CategoriaAnio,
-  ClaseAnio,
   ClaseJinete,
   CompetenciaResumen,
   EntradaPersona,
@@ -37,8 +43,7 @@ import type {
 } from '../types/publico'
 
 const modos: { value: ModoRanking; label: string }[] = [
-  { value: 'general', label: 'General' },
-  { value: 'categoria', label: 'Por categoría' },
+  { value: 'campeonato', label: 'Campeonato' },
   { value: 'competencia', label: 'Por competencia' },
   ...ROLES_PERSONA.map((r) => ({ value: r.value, label: r.label })),
 ]
@@ -71,12 +76,11 @@ function SelectField({
 export function Ranking() {
   const [anios, setAnios] = useState<AnioRanking[]>([])
   const [year, setYear] = useState<number | null>(null)
-  const [modo, setModo] = useState<ModoRanking>('general')
-  const [tipo, setTipo] = useState('')
-  const [clase, setClase] = useState('')
+  const [modo, setModo] = useState<ModoRanking>('campeonato')
+  const [modalidad, setModalidad] = useState<Modalidad>('paso_fino')
+  const [campeonato, setCampeonato] = useState<CampeonatoEdad>('general')
+  const [sexo, setSexo] = useState<SexoEjemplar>('M')
   const [competenciaId, setCompetenciaId] = useState('')
-  const [categorias, setCategorias] = useState<CategoriaAnio[]>([])
-  const [clases, setClases] = useState<ClaseAnio[]>([])
   const [competencias, setCompetencias] = useState<CompetenciaResumen[]>([])
   const [ranking, setRanking] = useState<EntradaRanking[]>([])
   const [personas, setPersonas] = useState<EntradaPersona[]>([])
@@ -116,11 +120,9 @@ export function Ranking() {
   useEffect(() => {
     if (!year) return
     let cancel = false
-    Promise.all([cargarCategorias(year), cargarCalendario(year)])
-      .then(([cats, comps]) => {
+    cargarCalendario(year)
+      .then((comps) => {
         if (cancel) return
-        setCategorias(cats)
-        setTipo((actual) => (cats.some((c) => c.tipo === actual) ? actual : cats[0]?.tipo ?? ''))
         setCompetencias(comps)
         setCompetenciaId((actual) => (comps.some((c) => c.id === actual) ? actual : comps[0]?.id ?? ''))
       })
@@ -149,26 +151,6 @@ export function Ranking() {
       cancel = true
     }
   }, [year])
-
-  useEffect(() => {
-    if (!year || !tipo) {
-      setClases([])
-      return
-    }
-    let cancel = false
-    cargarClases(year, tipo)
-      .then((lista) => {
-        if (cancel) return
-        setClases(lista)
-        setClase((actual) => (lista.some((c) => c.clase === actual) ? actual : ''))
-      })
-      .catch((err: Error) => {
-        if (!cancel) setError(err.message)
-      })
-    return () => {
-      cancel = true
-    }
-  }, [year, tipo])
 
   useEffect(() => {
     if (!year) return
@@ -205,11 +187,9 @@ export function Ranking() {
     }
 
     const pedir =
-      modo === 'general'
-        ? cargarRankingGeneral(year)
-        : modo === 'categoria' && tipo
-          ? cargarRankingCategoria(year, tipo, clase || undefined)
-          : modo === 'competencia' && competenciaId
+      modo === 'campeonato'
+        ? cargarRankingCampeonato(year, modalidad, sexo, campeonato)
+        : modo === 'competencia' && competenciaId
             ? (() => {
                 const actual = competencias.find((c) => c.id === competenciaId)
                 if (actual && actual.resultados > 0) {
@@ -237,7 +217,7 @@ export function Ranking() {
     return () => {
       cancel = true
     }
-  }, [year, modo, rolPersona, tipo, clase, competenciaId, competencias, claseJinete, compPersona])
+  }, [year, modo, rolPersona, modalidad, sexo, campeonato, competenciaId, competencias, claseJinete, compPersona])
 
   const filtered = useMemo(() => {
     return ranking.filter((horse) =>
@@ -270,11 +250,11 @@ export function Ranking() {
     ? `${competenciaActual?.nombre ?? 'Esta fecha'} está en el calendario, pero todavía no tiene resultados.`
     : sinPuntos
     ? `Hay calendario de ${year}, pero todavía no hay resultados con puntos de ese año.`
-      : modo === 'categoria' && tipo
-      ? `Caballos con más puntos en ${tipo}${clase ? ` · ${clase}` : ''} (${year ?? ''}).`
-      : modo === 'competencia' && competenciaActual
-        ? `Resultados de ${competenciaActual.nombre} en ${competenciaActual.lugar}.`
-        : `Clasificación por puntos acumulados${year ? ` en ${year}` : ''}.`
+      : modo === 'campeonato'
+        ? `${etiquetaModalidad(modalidad)} · Campeonato ${etiquetaCampeonato(campeonato)} · ${etiquetaSexo(sexo)}${year ? ` (${year})` : ''}.`
+        : modo === 'competencia' && competenciaActual
+          ? `Resultados de ${competenciaActual.nombre} en ${competenciaActual.lugar}.`
+          : `Clasificación por puntos acumulados${year ? ` en ${year}` : ''}.`
 
   return (
     <div className="container-app page-shell">
@@ -295,24 +275,25 @@ export function Ranking() {
       <div className="mb-6 space-y-4">
         <FilterChips label="Tipo de ranking" value={modo} options={modos} onChange={setModo} />
 
-        {modo === 'categoria' ? (
+        {modo === 'campeonato' ? (
           <div className="space-y-4">
-            <FilterChips
-              label="Categoría"
-              value={tipo}
-              options={categorias.map((c) => ({ value: c.tipo, label: c.tipo }))}
-              onChange={setTipo}
-            />
-            {clases.length > 0 ? (
-              <SelectField label="Clase" value={clase} onChange={setClase}>
-                <option value="">Todas las clases de {tipo}</option>
-                {clases.map((c) => (
-                  <option key={c.clase} value={c.clase}>
-                    {formatNombre(c.clase)} ({c.caballos})
-                  </option>
-                ))}
-              </SelectField>
-            ) : null}
+            <div>
+              <p className="typo-label mb-2">Modalidad</p>
+              <FilterChips label="Modalidad" value={modalidad} options={MODALIDADES} onChange={setModalidad} />
+            </div>
+            <div>
+              <p className="typo-label mb-2">Campeonato</p>
+              <FilterChips
+                label="Campeonato"
+                value={campeonato}
+                options={CAMPEONATOS.map((c) => ({ value: c.value, label: `${c.label} · ${c.detalle}` }))}
+                onChange={setCampeonato}
+              />
+            </div>
+            <div>
+              <p className="typo-label mb-2">Sexo</p>
+              <FilterChips label="Sexo" value={sexo} options={SEXOS} onChange={setSexo} />
+            </div>
           </div>
         ) : null}
 
@@ -415,7 +396,7 @@ export function Ranking() {
           description={
             sinPuntosFecha || sinPuntos
               ? 'Esta fecha está en el calendario, pero sus resultados todavía no se han cargado.'
-              : 'Prueba con otro nombre, otra categoría o una competencia distinta.'
+              : 'Prueba con otra modalidad, otro campeonato o el otro sexo.'
           }
           action={
             sinPuntosFecha || sinPuntos ? (
@@ -430,11 +411,11 @@ export function Ranking() {
                 type="button"
                 onClick={() => {
                   setQuery('')
-                  setModo('general')
+                  setModo('campeonato')
                 }}
                 className="typo-btn rounded-[12px] bg-gold px-5 py-2.5 text-bg transition-colors hover:bg-gold-soft"
               >
-                Ver ranking general
+                Ver campeonato
               </button>
             )
           }
