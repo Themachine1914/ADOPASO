@@ -362,7 +362,7 @@ export const GUIA: CategoriaGuia[] = [
       {
         pregunta: '¿Qué reportes de puntos tiene el ranking?',
         respuesta:
-          '«General» (caballos del año), «Por categoría» (Funcional, Bellas formas, A la cuerda, Libre y sus clases), «Por competencia», «Montadores», «Jinetes y amazonas» (por clase), «Criadores» y «Propietarios».',
+          '«Campeonato» (modalidad, edad y sexo: Paso fino, Performance, Placer, Trocha pura, Trocha y galope, Trote y galope o Bellas formas; en proceso de 31 a 35 meses, joven de 36 a 48, o general de 49 en adelante; machos y hembras por separado), «Por competencia», «Montadores», «Jinetes y amazonas» (por clase), «Criadores» y «Propietarios».',
         enlace: { to: '/ranking', label: 'Abrir el Ranking' },
       },
       {

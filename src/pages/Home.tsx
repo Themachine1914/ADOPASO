@@ -3,18 +3,21 @@ import { Link } from 'react-router-dom'
 import { HorseCard } from '../components/HorseCard'
 import { StatSummary } from '../components/StatSummary'
 import { formatDate } from '../lib/format'
+import { FilterChips } from '../components/FilterChips'
+import { SEXOS, etiquetaCampeonato, etiquetaModalidad, type SexoEjemplar } from '../lib/campeonato'
 import { supabaseConfigurado } from '../lib/supabase'
 import {
   anioPorDefecto,
   cargarAniosRanking,
   cargarProximaCompetencia,
-  cargarRankingGeneral,
+  cargarRankingCampeonato,
 } from '../lib/publico'
 import type { AnioRanking, CompetenciaResumen, EntradaRanking } from '../types/publico'
 
 export function Home() {
   const [anio, setAnio] = useState<number | null>(null)
   const [top3, setTop3] = useState<EntradaRanking[]>([])
+  const [sexo, setSexo] = useState<SexoEjemplar>('M')
   const [resumen, setResumen] = useState<AnioRanking | null>(null)
   const [next, setNext] = useState<CompetenciaResumen | null>(null)
 
@@ -28,11 +31,6 @@ export function Home() {
         setAnio(elegido)
         setResumen(anios.find((a) => a.anio === elegido) ?? null)
         setNext(proxima)
-        if (elegido) {
-          return cargarRankingGeneral(elegido).then((filas) => {
-            if (!cancel) setTop3(filas.slice(0, 3))
-          })
-        }
       })
       .catch(() => {
         /* el ranking vacío se ve como estado inicial */
@@ -41,6 +39,21 @@ export function Home() {
       cancel = true
     }
   }, [])
+
+  useEffect(() => {
+    if (!supabaseConfigurado || !anio) return
+    let cancel = false
+    cargarRankingCampeonato(anio, 'paso_fino', sexo, 'general')
+      .then((filas) => {
+        if (!cancel) setTop3(filas.slice(0, 3))
+      })
+      .catch(() => {
+        if (!cancel) setTop3([])
+      })
+    return () => {
+      cancel = true
+    }
+  }, [anio, sexo])
 
   return (
     <div>
@@ -62,8 +75,8 @@ export function Home() {
             <p className="typo-eyebrow fade-up fade-up-delay-1 mb-3">Puntuaciones oficiales</p>
             <h1 className="typo-hero fade-up fade-up-delay-1">Ranking de caballos ADOPASO</h1>
             <p className="typo-lead fade-up fade-up-delay-2 mx-auto mt-5 max-w-xl">
-              Quiénes van más adelante en puntos, por categoría (Funcional, Bellas formas, A la
-              cuerda y Libre) y por cada competencia.
+              Quiénes van más adelante en puntos, por modalidad, campeonato de edad y sexo. Machos y
+              hembras no compiten juntos.
             </p>
             <div className="fade-up fade-up-delay-3 mt-9 flex flex-wrap items-center justify-center gap-3">
               <Link
@@ -90,6 +103,9 @@ export function Home() {
             <h2 className="typo-section mt-2">
               Top 3{anio ? ` de ${anio}` : ''}
             </h2>
+            <p className="typo-meta mt-2">
+              {etiquetaModalidad('paso_fino')} · Campeonato {etiquetaCampeonato('general')}
+            </p>
           </div>
           <Link
             to="/ranking"
@@ -97,6 +113,10 @@ export function Home() {
           >
             Ver todos →
           </Link>
+        </div>
+
+        <div className="mb-6">
+          <FilterChips label="Sexo del podio" value={sexo} options={SEXOS} onChange={setSexo} />
         </div>
 
         {top3.length === 0 ? (

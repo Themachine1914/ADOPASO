@@ -1,3 +1,14 @@
+import {
+  campeonatoDeMeses,
+  mesesCumplidos,
+  modalidadDeClase,
+  sexoDeClase,
+  sexoRegistro,
+  type CampeonatoEdad,
+  type Modalidad,
+  type SexoEjemplar,
+} from './campeonato'
+import { normalize } from './normalize'
 import { supabase, supabaseConfigurado } from './supabase'
 import { formatNombre } from './format'
 import type {
@@ -129,6 +140,211 @@ export async function cargarAniosPublicos(): Promise<AnioRanking[]> {
     }
   }
   return [...porAnio.values()].sort((a, b) => b.anio - a.anio)
+}
+
+interface FichaBreve {
+  sexo: SexoEjemplar | null
+  nacimiento: string
+}
+
+interface IndiceCaballos {
+  porCodigo: Map<string, FichaBreve>
+  porNombre: Map<string, FichaBreve[]>
+}
+
+interface ResultadoCrudo {
+  fecha: string
+  tipo: string | null
+  clase: string | null
+  caballoId: string
+  caballoNombre: string
+  expositor: string | null
+  criador: string | null
+  puesto: number | null
+  puntos: number
+  campeon: boolean
+}
+
+let indiceCaballos: Promise<IndiceCaballos> | null = null
+const resultadosPorAnio = new Map<number, Promise<ResultadoCrudo[]>>()
+
+async function paginar<T>(
+  pedir: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const tamano = 1000
+  const filas: T[] = []
+  for (let desde = 0; ; desde += tamano) {
+    const { data, error } = await pedir(desde, desde + tamano - 1)
+    if (error) throw error
+    const pagina = data ?? []
+    filas.push(...pagina)
+    if (pagina.length < tamano) return filas
+  }
+}
+
+function cargarIndiceCaballos(): Promise<IndiceCaballos> {
+  if (!indiceCaballos) {
+    indiceCaballos = paginar<{ codigo: string; nombre: string; sexo: string | null; fecha_nacimiento: string | null }>(
+      (desde, hasta) =>
+        supabase
+          .from('caballo_publico')
+          .select('codigo, nombre, sexo, fecha_nacimiento')
+          .order('codigo', { ascending: true })
+          .range(desde, hasta),
+    ).then((filas) => {
+      const porCodigo = new Map<string, FichaBreve>()
+      const porNombre = new Map<string, FichaBreve[]>()
+      for (const row of filas) {
+        const ficha: FichaBreve = {
+          sexo: sexoRegistro(row.sexo),
+          nacimiento: fechaIso(row.fecha_nacimiento),
+        }
+        const codigo = texto(row.codigo)
+        if (codigo) porCodigo.set(codigo, ficha)
+        const nombre = normalize(texto(row.nombre))
+        if (!nombre) continue
+        const lista = porNombre.get(nombre)
+        if (lista) lista.push(ficha)
+        else porNombre.set(nombre, [ficha])
+      }
+      return { porCodigo, porNombre }
+    })
+  }
+  return indiceCaballos
+}
+
+function cargarResultadosAnio(anio: number): Promise<ResultadoCrudo[]> {
+  const previa = resultadosPorAnio.get(anio)
+  if (previa) return previa
+  const pedido = paginar<{
+    fecha: string
+    tipo: string | null
+    clase: string | null
+    caballo_id: string
+    caballo_nombre: string
+    expositor: string | null
+    criador: string | null
+    puesto: number | null
+    puntos: number | null
+    campeon: boolean | null
+  }>((desde, hasta) =>
+    supabase
+      .from('resultados_publicos')
+      .select('fecha, tipo, clase, caballo_id, caballo_nombre, expositor, criador, puesto, puntos, campeon')
+      .eq('anio', anio)
+      .order('fecha', { ascending: true })
+      .order('caballo_id', { ascending: true })
+      .order('clase', { ascending: true })
+      .range(desde, hasta),
+  ).then((filas) =>
+    filas.map((row) => ({
+      fecha: fechaIso(row.fecha),
+      tipo: texto(row.tipo) || null,
+      clase: texto(row.clase) || null,
+      caballoId: texto(row.caballo_id),
+      caballoNombre: texto(row.caballo_nombre),
+      expositor: texto(row.expositor) || null,
+      criador: texto(row.criador) || null,
+      puesto: row.puesto == null ? null : entero(row.puesto),
+      puntos: entero(row.puntos),
+      campeon: Boolean(row.campeon),
+    })),
+  )
+  resultadosPorAnio.set(anio, pedido)
+  pedido.catch(() => resultadosPorAnio.delete(anio))
+  return pedido
+}
+
+function fichaDelResultado(indice: IndiceCaballos, row: ResultadoCrudo): FichaBreve | null {
+  const porCodigo = row.caballoId ? indice.porCodigo.get(row.caballoId) : undefined
+  if (porCodigo) return porCodigo
+  const nombre = normalize(row.caballoNombre)
+  const lista = nombre ? indice.porNombre.get(nombre) : undefined
+  if (!lista || lista.length !== 1) return null
+  return lista[0]
+}
+
+/** Ranking de una modalidad, un sexo y un campeonato de edad. Machos y hembras no se mezclan. */
+export async function cargarRankingCampeonato(
+  anio: number,
+  modalidad: Modalidad,
+  sexo: SexoEjemplar,
+  campeonato: CampeonatoEdad,
+): Promise<EntradaRanking[]> {
+  const [indice, resultados] = await Promise.all([cargarIndiceCaballos(), cargarResultadosAnio(anio)])
+  const acumulado = new Map<
+    string,
+    {
+      name: string
+      owner: string
+      stable: string
+      points: number
+      salidas: number
+      campeonatos: number
+      mejorPuesto: number | null
+    }
+  >()
+
+  for (const row of resultados) {
+    if (modalidadDeClase(row.clase, row.tipo) !== modalidad) continue
+    const ficha = fichaDelResultado(indice, row)
+    const sexoFila = ficha?.sexo ?? sexoDeClase(row.clase)
+    if (sexoFila !== sexo) continue
+    const meses = mesesCumplidos(ficha?.nacimiento, row.fecha)
+    if (campeonatoDeMeses(meses) !== campeonato) continue
+    const id = row.caballoId || row.caballoNombre
+    if (!id) continue
+    const actual = acumulado.get(id) ?? {
+      name: formatNombre(row.caballoNombre || id),
+      owner: formatNombre(row.expositor ?? ''),
+      stable: formatNombre(row.criador ?? ''),
+      points: 0,
+      salidas: 0,
+      campeonatos: 0,
+      mejorPuesto: null,
+    }
+    actual.points += row.puntos
+    actual.salidas += 1
+    if (row.campeon) actual.campeonatos += 1
+    if (row.puesto != null && row.puesto > 0 && (actual.mejorPuesto == null || row.puesto < actual.mejorPuesto)) {
+      actual.mejorPuesto = row.puesto
+    }
+    acumulado.set(id, actual)
+  }
+
+  const ordenados = [...acumulado.entries()]
+    .filter(([, fila]) => fila.points > 0)
+    .sort((a, b) => {
+      if (b[1].points !== a[1].points) return b[1].points - a[1].points
+      if (b[1].campeonatos !== a[1].campeonatos) return b[1].campeonatos - a[1].campeonatos
+      const puestoA = a[1].mejorPuesto ?? Number.POSITIVE_INFINITY
+      const puestoB = b[1].mejorPuesto ?? Number.POSITIVE_INFINITY
+      if (puestoA !== puestoB) return puestoA - puestoB
+      return a[1].name.localeCompare(b[1].name, 'es')
+    })
+
+  let posicion = 0
+  let vistos = 0
+  let claveAnterior = ''
+  return ordenados.map(([id, fila]) => {
+    vistos += 1
+    const clave = `${fila.points}|${fila.campeonatos}|${fila.mejorPuesto ?? ''}`
+    if (clave !== claveAnterior) {
+      posicion = vistos
+      claveAnterior = clave
+    }
+    return {
+      id,
+      name: fila.name,
+      owner: fila.owner,
+      stable: fila.stable,
+      position: posicion,
+      points: fila.points,
+      salidas: fila.salidas,
+      campeonatos: fila.campeonatos,
+      mejorPuesto: fila.mejorPuesto,
+    }
+  })
 }
 
 export async function cargarRankingGeneral(anio: number): Promise<EntradaRanking[]> {
