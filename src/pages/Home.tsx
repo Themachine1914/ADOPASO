@@ -75,7 +75,7 @@ export function Home() {
             <p className="typo-eyebrow fade-up fade-up-delay-1 mb-3">Puntuaciones oficiales</p>
             <h1 className="typo-hero fade-up fade-up-delay-1">Ranking de caballos ADOPASO</h1>
             <p className="typo-lead fade-up fade-up-delay-2 mx-auto mt-5 max-w-xl">
-              Quiénes van más adelante en puntos, por modalidad, campeonato de edad y sexo. Machos y
+              Quiénes van más adelante en puntos, por modalidad, ranking de edad y sexo. Machos y
               hembras no compiten juntos.
             </p>
             <div className="fade-up fade-up-delay-3 mt-9 flex flex-wrap items-center justify-center gap-3">
@@ -104,7 +104,7 @@ export function Home() {
               Top 3{anio ? ` de ${anio}` : ''}
             </h2>
             <p className="typo-meta mt-2">
-              {etiquetaModalidad('paso_fino')} · Campeonato {etiquetaCampeonato('general')}
+              {etiquetaModalidad('paso_fino')} · Ranking {etiquetaCampeonato('general')}
             </p>
           </div>
           <Link

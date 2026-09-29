@@ -43,7 +43,7 @@ import type {
 } from '../types/publico'
 
 const modos: { value: ModoRanking; label: string }[] = [
-  { value: 'campeonato', label: 'Campeonato' },
+  { value: 'campeonato', label: 'Ranking' },
   { value: 'competencia', label: 'Por competencia' },
   ...ROLES_PERSONA.map((r) => ({ value: r.value, label: r.label })),
 ]
@@ -251,7 +251,7 @@ export function Ranking() {
     : sinPuntos
     ? `Hay calendario de ${year}, pero todavía no hay resultados con puntos de ese año.`
       : modo === 'campeonato'
-        ? `${etiquetaModalidad(modalidad)} · Campeonato ${etiquetaCampeonato(campeonato)} · ${etiquetaSexo(sexo)}${year ? ` (${year})` : ''}.`
+        ? `${etiquetaModalidad(modalidad)} · Ranking ${etiquetaCampeonato(campeonato)} · ${etiquetaSexo(sexo)}${year ? ` (${year})` : ''}.`
         : modo === 'competencia' && competenciaActual
           ? `Resultados de ${competenciaActual.nombre} en ${competenciaActual.lugar}.`
           : `Clasificación por puntos acumulados${year ? ` en ${year}` : ''}.`
@@ -282,9 +282,9 @@ export function Ranking() {
               <FilterChips label="Modalidad" value={modalidad} options={MODALIDADES} onChange={setModalidad} />
             </div>
             <div>
-              <p className="typo-label mb-2">Campeonato</p>
+              <p className="typo-label mb-2">Ranking</p>
               <FilterChips
-                label="Campeonato"
+                label="Ranking"
                 value={campeonato}
                 options={CAMPEONATOS.map((c) => ({ value: c.value, label: `${c.label} · ${c.detalle}` }))}
                 onChange={setCampeonato}
@@ -396,7 +396,7 @@ export function Ranking() {
           description={
             sinPuntosFecha || sinPuntos
               ? 'Esta fecha está en el calendario, pero sus resultados todavía no se han cargado.'
-              : 'Prueba con otra modalidad, otro campeonato o el otro sexo.'
+              : 'Prueba con otra modalidad, otro ranking o el otro sexo.'
           }
           action={
             sinPuntosFecha || sinPuntos ? (
@@ -415,7 +415,7 @@ export function Ranking() {
                 }}
                 className="typo-btn rounded-[12px] bg-gold px-5 py-2.5 text-bg transition-colors hover:bg-gold-soft"
               >
-                Ver campeonato
+                Ver ranking
               </button>
             )
           }
