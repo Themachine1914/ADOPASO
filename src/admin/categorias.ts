@@ -1,3 +1,5 @@
+import { MODALIDADES } from '../lib/campeonato'
+
 export type TipoColumna = 'texto' | 'fecha' | 'numero' | 'si_no'
 
 export interface Columna {
@@ -126,7 +128,8 @@ const FORM_CABALLO: CampoForm[] = [
   {
     clave: 'raza',
     etiqueta: 'Modalidad',
-    sugerencias: ['PASO FINO', 'TROCHA COLOMBIANA', 'TROTE Y GALOPE', 'TROCHA Y GALOPE'],
+    tipo: 'opciones',
+    opciones: MODALIDADES.map((m) => ({ valor: m.label, etiqueta: m.label })),
   },
   {
     clave: 'categoria',

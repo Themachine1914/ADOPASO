@@ -177,7 +177,7 @@ export const GUIA: CategoriaGuia[] = [
           'Abra «Registro de caballos» y pulse «+ Registrar caballo».',
           'El «Código de registro» se sugiere solo (el siguiente G-). Cámbielo si el caballo trae otro código (O- u otro).',
           'Escriba el «Nombre» y elija el «Sexo». Son obligatorios.',
-          'Complete nacimiento, color, lugar, país, modalidad y tipo de registro.',
+          'Complete nacimiento, color, lugar y país. Elija la modalidad (la misma lista del ranking) y el tipo de registro.',
           'En «Padre» y «Madre», busque por nombre o código y elija el caballo. Son obligatorios y tienen que estar registrados. Si no aparecen, pulse «Agregar nuevo»: ese caballo sí puede guardarse sin sus propios padres, y al registrarlo queda elegido.',
           'En «Propietario» busque un socio, en «Criador» un criador y en «Asociación» la asociación. Si no existen, use «Agregar nuevo».',
           'Complete señas, ADN y microchip, y pulse «Registrar».',

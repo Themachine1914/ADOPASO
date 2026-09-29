@@ -1,4 +1,5 @@
 import type { BuscaLista, CampoForm, Categoria } from '../admin/categorias'
+import { valorModalidad } from './campeonato'
 import { supabase } from './supabase'
 
 export type Valores = Record<string, string>
@@ -26,7 +27,12 @@ export function valoresIniciales(campos: CampoForm[], fila: Fila | null): Valore
   for (const campo of campos) {
     const actual = fila?.[campo.clave]
     if (fila) {
-      valores[campo.clave] = actual === null || actual === undefined ? '' : String(actual).slice(0, campo.tipo === 'fecha' ? 10 : undefined)
+      valores[campo.clave] =
+        actual === null || actual === undefined
+          ? ''
+          : campo.clave === 'raza'
+            ? valorModalidad(String(actual))
+            : String(actual).slice(0, campo.tipo === 'fecha' ? 10 : undefined)
     } else {
       valores[campo.clave] = campo.inicial === 'hoy' ? hoyIso() : campo.inicial ?? ''
     }

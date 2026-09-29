@@ -225,7 +225,12 @@ export function FormularioRegistro({
               const bloqueado = (campo.soloNuevo && !creando) || fijos?.[campo.clave] !== undefined
               const esPadre = campo.clave === 'padre_codigo' || campo.clave === 'madre_codigo'
               const obligatorio = campo.requerido && creando && !(padresOpcionales && esPadre)
-              const lista = campo.opciones ?? opciones[campo.clave] ?? []
+              const listaBase = campo.opciones ?? opciones[campo.clave] ?? []
+              const valorActual = fijos?.[campo.clave] ?? valores[campo.clave] ?? ''
+              const lista =
+                campo.tipo === 'opciones' && valorActual && !listaBase.some((o) => o.valor === valorActual)
+                  ? [{ valor: valorActual, etiqueta: valorActual }, ...listaBase]
+                  : listaBase
               const pista =
                 campo.buscaLista?.copiaEn && !(valores[campo.clave] ?? '').trim()
                   ? (valores[campo.buscaLista.copiaEn] ?? '').trim()

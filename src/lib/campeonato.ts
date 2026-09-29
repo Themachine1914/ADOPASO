@@ -40,6 +40,35 @@ export function etiquetaModalidad(modalidad: Modalidad): string {
   return MODALIDADES.find((m) => m.value === modalidad)?.label ?? modalidad
 }
 
+/** Textos viejos del libro que corresponden a una modalidad del ranking. */
+const ALIAS_MODALIDAD: Record<string, Modalidad> = {
+  'paso fino': 'paso_fino',
+  paso: 'paso_fino',
+  fino: 'paso_fino',
+  pf: 'paso_fino',
+  pasofino: 'paso_fino',
+  performance: 'performance',
+  placer: 'placer',
+  pleasure: 'placer',
+  trocha: 'trocha_pura',
+  'trocha pura': 'trocha_pura',
+  'trocha colombiana': 'trocha_pura',
+  'trocha y galope': 'trocha_galope',
+  'trote y galope': 'trote_galope',
+  'bellas formas': 'bellas_formas',
+}
+
+/** Valor que debe quedar seleccionado en el formulario. Si no es una modalidad conocida, se deja igual. */
+export function valorModalidad(valor: string | null | undefined): string {
+  const crudo = (valor ?? '').trim()
+  if (!crudo) return ''
+  const clave = normalize(crudo).replace(/\s+/g, ' ')
+  const oficial = MODALIDADES.find((m) => normalize(m.label) === clave)
+  if (oficial) return oficial.label
+  const alias = ALIAS_MODALIDAD[clave]
+  return alias ? etiquetaModalidad(alias) : crudo
+}
+
 export function etiquetaCampeonato(campeonato: CampeonatoEdad): string {
   const item = CAMPEONATOS.find((c) => c.value === campeonato)
   return item ? `${item.label} (${item.detalle})` : campeonato
