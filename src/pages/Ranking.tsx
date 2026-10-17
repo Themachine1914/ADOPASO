@@ -27,14 +27,19 @@ import {
   anioPorDefecto,
   cargarAniosPublicos,
   cargarCalendario,
+  cargarCategorias,
+  cargarClases,
   cargarClasesJinetes,
   cargarRankingCampeonato,
+  cargarRankingCategoria,
   cargarRankingCompetencia,
   cargarRankingPersonas,
   esRolPersona,
 } from '../lib/publico'
 import type {
   AnioRanking,
+  CategoriaAnio,
+  ClaseAnio,
   ClaseJinete,
   CompetenciaResumen,
   EntradaPersona,
@@ -44,6 +49,7 @@ import type {
 
 const modos: { value: ModoRanking; label: string }[] = [
   { value: 'campeonato', label: 'Ranking' },
+  { value: 'categoria', label: 'Por categoría' },
   { value: 'competencia', label: 'Por competencia' },
   ...ROLES_PERSONA.map((r) => ({ value: r.value, label: r.label })),
 ]
@@ -80,6 +86,10 @@ export function Ranking() {
   const [modalidad, setModalidad] = useState<Modalidad>('paso_fino')
   const [campeonato, setCampeonato] = useState<CampeonatoEdad>('general')
   const [sexo, setSexo] = useState<SexoEjemplar>('M')
+  const [tipo, setTipo] = useState('')
+  const [clase, setClase] = useState('')
+  const [categorias, setCategorias] = useState<CategoriaAnio[]>([])
+  const [clases, setClases] = useState<ClaseAnio[]>([])
   const [competenciaId, setCompetenciaId] = useState('')
   const [competencias, setCompetencias] = useState<CompetenciaResumen[]>([])
   const [ranking, setRanking] = useState<EntradaRanking[]>([])
@@ -120,9 +130,11 @@ export function Ranking() {
   useEffect(() => {
     if (!year) return
     let cancel = false
-    cargarCalendario(year)
-      .then((comps) => {
+    Promise.all([cargarCategorias(year), cargarCalendario(year)])
+      .then(([cats, comps]) => {
         if (cancel) return
+        setCategorias(cats)
+        setTipo((actual) => (cats.some((c) => c.tipo === actual) ? actual : cats[0]?.tipo ?? ''))
         setCompetencias(comps)
         setCompetenciaId((actual) => (comps.some((c) => c.id === actual) ? actual : comps[0]?.id ?? ''))
       })
@@ -133,6 +145,26 @@ export function Ranking() {
       cancel = true
     }
   }, [year])
+
+  useEffect(() => {
+    if (!year || !tipo) {
+      setClases([])
+      return
+    }
+    let cancel = false
+    cargarClases(year, tipo)
+      .then((lista) => {
+        if (cancel) return
+        setClases(lista)
+        setClase((actual) => (lista.some((c) => c.clase === actual) ? actual : ''))
+      })
+      .catch((err: Error) => {
+        if (!cancel) setError(err.message)
+      })
+    return () => {
+      cancel = true
+    }
+  }, [year, tipo])
 
   useEffect(() => {
     if (!year) return
@@ -189,7 +221,9 @@ export function Ranking() {
     const pedir =
       modo === 'campeonato'
         ? cargarRankingCampeonato(year, modalidad, sexo, campeonato)
-        : modo === 'competencia' && competenciaId
+        : modo === 'categoria' && tipo
+          ? cargarRankingCategoria(year, tipo, clase || undefined)
+          : modo === 'competencia' && competenciaId
             ? (() => {
                 const actual = competencias.find((c) => c.id === competenciaId)
                 if (actual && actual.resultados > 0) {
@@ -217,7 +251,7 @@ export function Ranking() {
     return () => {
       cancel = true
     }
-  }, [year, modo, rolPersona, modalidad, sexo, campeonato, competenciaId, competencias, claseJinete, compPersona])
+  }, [year, modo, rolPersona, modalidad, sexo, campeonato, tipo, clase, competenciaId, competencias, claseJinete, compPersona])
 
   const filtered = useMemo(() => {
     return ranking.filter((horse) =>
@@ -252,6 +286,8 @@ export function Ranking() {
     ? `Hay calendario de ${year}, pero todavía no hay resultados con puntos de ese año.`
       : modo === 'campeonato'
         ? `${etiquetaModalidad(modalidad)} · Ranking ${etiquetaCampeonato(campeonato)} · ${etiquetaSexo(sexo)}${year ? ` (${year})` : ''}.`
+        : modo === 'categoria' && tipo
+          ? `Todos los caballos que compitieron en ${tipo}${clase ? ` · ${formatNombre(clase)}` : ''} (${year ?? ''}), ordenados por puntos.`
         : modo === 'competencia' && competenciaActual
           ? `Resultados de ${competenciaActual.nombre} en ${competenciaActual.lugar}.`
           : `Clasificación por puntos acumulados${year ? ` en ${year}` : ''}.`
@@ -275,11 +311,37 @@ export function Ranking() {
       <div className="mb-6 space-y-4">
         <FilterChips label="Tipo de ranking" value={modo} options={modos} onChange={setModo} />
 
+        {modo === 'categoria' ? (
+          <div className="space-y-4">
+            <FilterChips
+              label="Categoría"
+              value={tipo}
+              options={categorias.map((c) => ({ value: c.tipo, label: c.tipo }))}
+              onChange={setTipo}
+            />
+            {clases.length > 0 ? (
+              <SelectField label="Clase" value={clase} onChange={setClase}>
+                <option value="">Todas las clases de {tipo}</option>
+                {clases.map((c) => (
+                  <option key={c.clase} value={c.clase}>
+                    {formatNombre(c.clase)} ({c.caballos})
+                  </option>
+                ))}
+              </SelectField>
+            ) : null}
+          </div>
+        ) : null}
+
         {modo === 'campeonato' ? (
           <div className="space-y-4">
             <div>
-              <p className="typo-label mb-2">Modalidad</p>
-              <FilterChips label="Modalidad" value={modalidad} options={MODALIDADES} onChange={setModalidad} />
+              <p className="typo-label mb-2">Modalidad de competencia</p>
+              <FilterChips
+                label="Modalidad de competencia"
+                value={modalidad}
+                options={MODALIDADES}
+                onChange={setModalidad}
+              />
             </div>
             <div>
               <p className="typo-label mb-2">Ranking</p>
@@ -396,7 +458,7 @@ export function Ranking() {
           description={
             sinPuntosFecha || sinPuntos
               ? 'Esta fecha está en el calendario, pero sus resultados todavía no se han cargado.'
-              : 'Prueba con otra modalidad, otro ranking o el otro sexo.'
+              : 'Prueba con otra modalidad, otra categoría o el otro sexo.'
           }
           action={
             sinPuntosFecha || sinPuntos ? (

@@ -1,5 +1,5 @@
-import type { BuscaLista, CampoForm, Categoria } from '../admin/categorias'
-import { valorModalidad } from './campeonato'
+import { MODALIDADES_REGISTRO, type BuscaLista, type CampoForm, type Categoria } from '../admin/categorias'
+import { normalize } from './normalize'
 import { supabase } from './supabase'
 
 export type Valores = Record<string, string>
@@ -11,9 +11,35 @@ const MESES = [
 ]
 
 const CATEGORIA_CABALLO: Record<string, string> = {
+  I: 'REGISTRO GENEALOGICO TIPO I',
+  DO: 'REGISTRO GENEALOGICO TIPO DO',
+  G: 'REGISTRO GENEALOGICO TIPO G',
   D: 'REGISTRO GENEALOGICO',
   C: '7/8 SANGRE',
   B: '3/4 SANGRE',
+}
+
+/** Textos viejos del libro que corresponden a una modalidad del registro, no de la competencia. */
+const ALIAS_MODALIDAD_REGISTRO: Record<string, string> = {
+  'paso fino': 'Paso Fino',
+  pasofino: 'Paso Fino',
+  trocha: 'Trocha',
+  'trocha pura': 'Trocha',
+  'trocha colombiana': 'Trocha',
+  'trote y galope': 'Trote y galope',
+  'trocha y galope': 'Trocha y galope',
+}
+
+export function valorModalidadRegistro(valor: string | null | undefined): string {
+  const crudo = (valor ?? '').trim()
+  if (!crudo) return ''
+  const clave = normalize(crudo).replace(/\s+/g, ' ')
+  const oficial = MODALIDADES_REGISTRO.find((m) => normalize(m.valor) === clave)
+  return oficial?.valor ?? ALIAS_MODALIDAD_REGISTRO[clave] ?? crudo
+}
+
+export function nombreCategoriaCaballo(codigo: string): string {
+  return CATEGORIA_CABALLO[codigo] ?? codigo
 }
 
 export function hoyIso(): string {
@@ -31,7 +57,7 @@ export function valoresIniciales(campos: CampoForm[], fila: Fila | null): Valore
         actual === null || actual === undefined
           ? ''
           : campo.clave === 'raza'
-            ? valorModalidad(String(actual))
+            ? valorModalidadRegistro(String(actual))
             : String(actual).slice(0, campo.tipo === 'fecha' ? 10 : undefined)
     } else {
       valores[campo.clave] = campo.inicial === 'hoy' ? hoyIso() : campo.inicial ?? ''
@@ -193,6 +219,27 @@ function aFila(campos: CampoForm[], valores: Valores, creando: boolean): Fila {
     }
   }
   return fila
+}
+
+/** Código de otro caballo que ya tiene ese ADN o microchip. Vacío si no hay conflicto. */
+export async function caballoConDato(
+  campo: 'adn' | 'microchip',
+  valor: string,
+  codigoActual?: string,
+): Promise<string | null> {
+  const texto = valor.trim()
+  if (!texto) return null
+  const patron = texto.replace(/[%_\\]/g, '\\$&')
+  let consulta = supabase.from('caballos').select(`codigo, ${campo}`).ilike(campo, patron)
+  const propio = codigoActual?.trim()
+  if (propio) consulta = consulta.neq('codigo', propio)
+  const { data, error } = await consulta.limit(20)
+  if (error) throw error
+  const buscado = texto.toUpperCase()
+  const otro = ((data ?? []) as unknown as Record<string, unknown>[]).find(
+    (row) => String(row[campo] ?? '').trim().toUpperCase() === buscado,
+  )
+  return otro?.codigo ? String(otro.codigo) : null
 }
 
 export function validar(

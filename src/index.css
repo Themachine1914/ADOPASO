@@ -232,6 +232,20 @@
   .fade-up-delay-3 {
     animation-delay: 0.3s;
   }
+
+  .admin-nav-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  .admin-nav-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .admin-nav-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 999px;
+  }
 }
 
 @keyframes fadeUp {

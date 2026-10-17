@@ -1,5 +1,3 @@
-import { MODALIDADES } from '../lib/campeonato'
-
 export type TipoColumna = 'texto' | 'fecha' | 'numero' | 'si_no'
 
 export interface Columna {
@@ -98,6 +96,20 @@ const CAMPOS_PERSONA: CampoForm[] = [
   { clave: 'direccion', etiqueta: 'Dirección', tipo: 'area', completo: true },
 ]
 
+/** Modalidades del libro de registro. No son las de las competencias. */
+export const MODALIDADES_REGISTRO = [
+  { valor: 'Paso Fino', etiqueta: 'Paso Fino' },
+  { valor: 'Trocha', etiqueta: 'Trocha' },
+  { valor: 'Trote y galope', etiqueta: 'Trote y galope' },
+  { valor: 'Trocha y galope', etiqueta: 'Trocha y galope' },
+]
+
+export const TIPOS_REGISTRO = [
+  { valor: 'I', etiqueta: 'Registro genealógico tipo I' },
+  { valor: 'DO', etiqueta: 'Registro genealógico tipo DO' },
+  { valor: 'G', etiqueta: 'Registro genealógico tipo G' },
+]
+
 const FORM_CABALLO: CampoForm[] = [
   {
     clave: 'codigo',
@@ -129,18 +141,13 @@ const FORM_CABALLO: CampoForm[] = [
     clave: 'raza',
     etiqueta: 'Modalidad',
     tipo: 'opciones',
-    opciones: MODALIDADES.map((m) => ({ valor: m.label, etiqueta: m.label })),
+    opciones: MODALIDADES_REGISTRO,
   },
   {
     clave: 'categoria',
     etiqueta: 'Tipo de registro genealógico',
     tipo: 'opciones',
-    opciones: [
-      { valor: 'D', etiqueta: 'Registro genealógico' },
-      { valor: 'C', etiqueta: '7/8 sangre' },
-      { valor: 'B', etiqueta: '3/4 sangre' },
-    ],
-    inicial: 'D',
+    opciones: TIPOS_REGISTRO,
   },
   {
     clave: 'asociacion_codigo',

@@ -92,7 +92,7 @@ export interface ResultadoPublico {
 
 export type RolPersona = 'montador' | 'jinete' | 'criador' | 'propietario'
 
-export type ModoRanking = 'campeonato' | 'competencia' | RolPersona
+export type ModoRanking = 'campeonato' | 'categoria' | 'competencia' | RolPersona
 
 export interface EntradaPersona {
   persona: string

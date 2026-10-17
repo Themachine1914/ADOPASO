@@ -2,9 +2,11 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { categoriaPorSlug, type CampoForm, type Categoria } from '../../admin/categorias'
 import {
   buscarNombre,
+  caballoConDato,
   cargarOpciones,
   guardarRegistro,
   leerRegistro,
+  nombreCategoriaCaballo,
   siguienteCodigo,
   validar,
   valoresIniciales,
@@ -57,6 +59,7 @@ export function FormularioRegistro({
   const [valores, setValores] = useState<Valores>(() => ({ ...valoresIniciales(campos, fila), ...fijos }))
   const [opciones, setOpciones] = useState<Record<string, Opcion[]>>({})
   const [avisos, setAvisos] = useState<Record<string, string>>({})
+  const [repetidos, setRepetidos] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [alta, setAlta] = useState<Alta | null>(null)
@@ -95,6 +98,31 @@ export function FormularioRegistro({
   function cambiar(clave: string, valor: string) {
     setValores((v) => ({ ...v, [clave]: valor }))
     setError(null)
+    if (clave === 'adn' || clave === 'microchip') {
+      setRepetidos((r) => ({ ...r, [clave]: '' }))
+    }
+  }
+
+  async function revisarDato(campo: 'adn' | 'microchip', valor: string): Promise<string> {
+    const texto = valor.trim()
+    if (!texto) {
+      setRepetidos((r) => ({ ...r, [campo]: '' }))
+      return ''
+    }
+    try {
+      const otro = await caballoConDato(campo, texto, valores.codigo)
+      const mensaje = otro
+        ? campo === 'adn'
+          ? `Este ADN ya está registrado en ${otro}.`
+          : `Este microchip ya está registrado en ${otro}.`
+        : ''
+      setRepetidos((r) => ({ ...r, [campo]: mensaje }))
+      return mensaje
+    } catch {
+      const mensaje = 'No se pudo comprobar si ya está registrado.'
+      setRepetidos((r) => ({ ...r, [campo]: mensaje }))
+      return mensaje
+    }
   }
 
   function elegirLista(campo: CampoForm, opcion: OpcionBusqueda | null) {
@@ -171,6 +199,13 @@ export function FormularioRegistro({
       setError(problema)
       return
     }
+    if (categoria.tabla === 'caballos') {
+      const [adn, microchip] = await Promise.all([
+        revisarDato('adn', valores.adn ?? ''),
+        revisarDato('microchip', valores.microchip ?? ''),
+      ])
+      if (adn || microchip) return
+    }
     setGuardando(true)
     setError(null)
     try {
@@ -229,7 +264,14 @@ export function FormularioRegistro({
               const valorActual = fijos?.[campo.clave] ?? valores[campo.clave] ?? ''
               const lista =
                 campo.tipo === 'opciones' && valorActual && !listaBase.some((o) => o.valor === valorActual)
-                  ? [{ valor: valorActual, etiqueta: valorActual }, ...listaBase]
+                  ? [
+                      {
+                        valor: valorActual,
+                        etiqueta:
+                          campo.clave === 'categoria' ? nombreCategoriaCaballo(valorActual) : valorActual,
+                      },
+                      ...listaBase,
+                    ]
                   : listaBase
               const pista =
                 campo.buscaLista?.copiaEn && !(valores[campo.clave] ?? '').trim()
@@ -297,7 +339,12 @@ export function FormularioRegistro({
                       value={valores[campo.clave] ?? ''}
                       disabled={bloqueado}
                       onChange={(e) => cambiar(campo.clave, e.target.value)}
-                      onBlur={() => completarNombre(campo)}
+                      onBlur={(e) => {
+                        if (campo.clave === 'adn' || campo.clave === 'microchip') {
+                          void revisarDato(campo.clave, e.currentTarget.value)
+                        }
+                        void completarNombre(campo)
+                      }}
                       className={CAMPO}
                     />
                   )}
@@ -308,7 +355,9 @@ export function FormularioRegistro({
                       ))}
                     </datalist>
                   ) : null}
-                  {avisos[campo.clave] ? (
+                  {repetidos[campo.clave] ? (
+                    <span className="typo-caption mt-1 block text-flag-red">{repetidos[campo.clave]}</span>
+                  ) : avisos[campo.clave] ? (
                     <span className="typo-caption mt-1 block text-gold">{avisos[campo.clave]}</span>
                   ) : pista ? (
                     <span className="typo-caption mt-1 block">En el libro figura «{pista}» sin código. Elija el registro.</span>

@@ -8,6 +8,7 @@ import { SearchInput } from '../../components/SearchInput'
 import { Skeleton } from '../../components/Skeleton'
 import { useAuth } from '../../lib/auth-context'
 import { FormularioRegistro } from './FormularioRegistro'
+import { describirAncestros } from '../../lib/genealogia'
 import { formatDate } from '../../lib/format'
 import { eliminarRegistro } from '../../lib/registro'
 import { supabase } from '../../lib/supabase'
@@ -39,6 +40,25 @@ function celda(valor: unknown, tipo?: TipoColumna): string {
 function etiquetaCampo(clave: string): string {
   const texto = clave.replace(/_/g, ' ')
   return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
+function ValorCampo({ clave, valor }: { clave: string; valor: unknown }) {
+  if (clave === 'ancestros') {
+    const lineas = describirAncestros(valor)
+    if (lineas.length === 0) return '—'
+    return (
+      <ul className="mt-1 space-y-1.5">
+        {lineas.map((linea) => (
+          <li key={linea.clave}>
+            <span className="typo-caption">{linea.etiqueta}</span>
+            <span className="block">{linea.texto}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+  if (valor !== null && typeof valor === 'object') return JSON.stringify(valor)
+  return String(valor)
 }
 
 function VistaCategoria({ categoria, esAdmin }: { categoria: Categoria; esAdmin: boolean }) {
@@ -361,8 +381,8 @@ function Detalle({
           {campos.map(([clave, valor]) => (
             <div key={clave}>
               <dt className="typo-caption">{etiquetaCampo(clave)}</dt>
-              <dd className="typo-meta mt-0.5 break-words whitespace-pre-wrap text-ink">
-                {typeof valor === 'object' ? JSON.stringify(valor, null, 2) : String(valor)}
+              <dd className="typo-meta mt-0.5 break-words text-ink">
+                <ValorCampo clave={clave} valor={valor} />
               </dd>
             </div>
           ))}

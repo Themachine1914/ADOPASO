@@ -81,7 +81,10 @@ export function AdminLayout() {
       </header>
 
       <div className="container-app grid gap-8 py-8 md:grid-cols-[14rem_1fr]">
-        <nav aria-label="Categorías" className="md:sticky md:top-24 md:self-start">
+        <nav
+          aria-label="Categorías"
+          className="admin-nav-scroll md:sticky md:top-24 md:max-h-[calc(100dvh-7.5rem)] md:self-start md:overflow-y-auto md:overscroll-contain md:pb-4 md:pr-1"
+        >
           <NavLink to="/admin" end className={enlace}>
             Resumen
           </NavLink>

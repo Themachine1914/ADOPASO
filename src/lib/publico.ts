@@ -264,14 +264,8 @@ function fichaDelResultado(indice: IndiceCaballos, row: ResultadoCrudo): FichaBr
   return lista[0]
 }
 
-/** Ranking de una modalidad, un sexo y un campeonato de edad. Machos y hembras no se mezclan. */
-export async function cargarRankingCampeonato(
-  anio: number,
-  modalidad: Modalidad,
-  sexo: SexoEjemplar,
-  campeonato: CampeonatoEdad,
-): Promise<EntradaRanking[]> {
-  const [indice, resultados] = await Promise.all([cargarIndiceCaballos(), cargarResultadosAnio(anio)])
+/** Suma los resultados por caballo y los ordena por puntos, campeonatos y mejor puesto. */
+function rankingDeResultados(filas: ResultadoCrudo[], incluirSinPuntos = false): EntradaRanking[] {
   const acumulado = new Map<
     string,
     {
@@ -285,13 +279,7 @@ export async function cargarRankingCampeonato(
     }
   >()
 
-  for (const row of resultados) {
-    if (modalidadDeClase(row.clase, row.tipo) !== modalidad) continue
-    const ficha = fichaDelResultado(indice, row)
-    const sexoFila = ficha?.sexo ?? sexoDeClase(row.clase)
-    if (sexoFila !== sexo) continue
-    const meses = mesesCumplidos(ficha?.nacimiento, row.fecha)
-    if (campeonatoDeMeses(meses) !== campeonato) continue
+  for (const row of filas) {
     const id = row.caballoId || row.caballoNombre
     if (!id) continue
     const actual = acumulado.get(id) ?? {
@@ -313,7 +301,7 @@ export async function cargarRankingCampeonato(
   }
 
   const ordenados = [...acumulado.entries()]
-    .filter(([, fila]) => fila.points > 0)
+    .filter(([, fila]) => incluirSinPuntos || fila.points > 0)
     .sort((a, b) => {
       if (b[1].points !== a[1].points) return b[1].points - a[1].points
       if (b[1].campeonatos !== a[1].campeonatos) return b[1].campeonatos - a[1].campeonatos
@@ -345,6 +333,24 @@ export async function cargarRankingCampeonato(
       mejorPuesto: fila.mejorPuesto,
     }
   })
+}
+
+/** Ranking de una modalidad, un sexo y un campeonato de edad. Machos y hembras no se mezclan. */
+export async function cargarRankingCampeonato(
+  anio: number,
+  modalidad: Modalidad,
+  sexo: SexoEjemplar,
+  campeonato: CampeonatoEdad,
+): Promise<EntradaRanking[]> {
+  const [indice, resultados] = await Promise.all([cargarIndiceCaballos(), cargarResultadosAnio(anio)])
+  const filas = resultados.filter((row) => {
+    if (modalidadDeClase(row.clase, row.tipo) !== modalidad) return false
+    const ficha = fichaDelResultado(indice, row)
+    const sexoFila = ficha?.sexo ?? sexoDeClase(row.clase)
+    if (sexoFila !== sexo) return false
+    return campeonatoDeMeses(mesesCumplidos(ficha?.nacimiento, row.fecha)) === campeonato
+  })
+  return rankingDeResultados(filas)
 }
 
 export async function cargarRankingGeneral(anio: number): Promise<EntradaRanking[]> {
@@ -390,26 +396,15 @@ export async function cargarClases(anio: number, tipo: string): Promise<ClaseAni
   }))
 }
 
+/** Todos los caballos que compitieron en una categoría (o clase), también los que no sumaron puntos. */
 export async function cargarRankingCategoria(
   anio: number,
   tipo: string,
   clase?: string,
 ): Promise<EntradaRanking[]> {
-  const tabla = clase ? 'ranking_clase' : 'ranking_categoria'
-  const columnas =
-    'caballo_id, caballo_nombre, expositor, criador, puntos, salidas, campeonatos, mejor_puesto, posicion' +
-    (clase ? ', clase' : '')
-  let q = supabase
-    .from(tabla)
-    .select(columnas)
-    .eq('anio', anio)
-    .eq('tipo', tipo)
-    .order('posicion', { ascending: true })
-    .limit(LIMITE)
-  if (clase) q = q.eq('clase', clase)
-  const { data, error } = await q
-  if (error) throw error
-  return (data ?? []).map((row) => filaRanking(row as unknown as Record<string, unknown>))
+  const resultados = await cargarResultadosAnio(anio)
+  const filas = resultados.filter((row) => row.tipo === tipo && (!clase || row.clase === clase))
+  return rankingDeResultados(filas, true)
 }
 
 export async function cargarCompetenciasConResultados(anio: number): Promise<CompetenciaResumen[]> {
