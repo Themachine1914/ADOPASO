@@ -77,6 +77,12 @@ export async function crearSimulacion(avance: (texto: string) => void): Promise<
     ...catalogo.filter((c) => c.modalidad === 'paso_fino'),
     ...catalogo.filter((c) => c.modalidad !== 'paso_fino'),
   ]
+  // Montadores reales del registro, para que la revisión de resultados muestre a quién van sus puntos.
+  const { data: montadores } = await supabase.from('montadores').select('nombre').limit(40)
+  const nombresMontador = (montadores ?? []).map((m) => String(m.nombre)).filter(Boolean)
+  const algunMontador = () =>
+    nombresMontador.length ? nombresMontador[Math.floor(Math.random() * nombresMontador.length)] : null
+
   let usadas = 0
   for (const categoria of candidatas) {
     if (usadas >= CATEGORIAS_SIMULADAS) break
@@ -84,7 +90,7 @@ export async function crearSimulacion(avance: (texto: string) => void): Promise<
     if (caballos.length < 3) continue
     avance(`Inscribiendo ${caballos.length} caballos en ${categoria.nombre}…`)
     for (const caballo of caballos) {
-      await inscribir(id, categoria, caballo, Math.random() < 0.7)
+      await inscribir(id, categoria, caballo, Math.random() < 0.7, algunMontador())
     }
     usadas += 1
   }

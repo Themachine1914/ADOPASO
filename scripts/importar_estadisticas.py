@@ -163,6 +163,10 @@ TABLAS = {
         ("asociacion", "abrevia", txt), ("numero_competidor", "numero", ent), ("hora", "hora", txt),
     ]),
 }
+# Filas de participaciones que vienen del Excel. Las de Competencias en vivo llevan competencia_id
+# y número negativo, así que nunca chocan con el número de fila del Excel.
+DEL_EXCEL = "competencia_id is null"
+
 ORDEN_CARGA = ["socios", "criadores", "montadores", "jueces", "eventos", "programa",
                "caballos", "descendencia", "participaciones"]
 
@@ -286,7 +290,10 @@ def aplicar(datos, reemplazar: bool):
         if con_datos and not reemplazar:
             sys.exit(f"Ya hay datos en {con_datos}. Use --reemplazar solo si quiere borrarlos y recargar.")
         if con_datos:
-            cur.execute("truncate " + ", ".join(f"public.{t}" for t in ORDEN_CARGA) + " restart identity")
+            # Los resultados sincronizados desde Competencias en vivo no vienen del Excel: se conservan.
+            excel = [t for t in ORDEN_CARGA if t != "participaciones"]
+            cur.execute("truncate " + ", ".join(f"public.{t}" for t in excel) + " restart identity")
+            cur.execute(f"delete from public.participaciones where {DEL_EXCEL}")
         for t in ORDEN_CARGA:
             _, cols, filas = datos[t]
             filas = [tuple(Json(v) if isinstance(v, dict) else v for v in f) for f in filas]
@@ -299,7 +306,8 @@ def aplicar(datos, reemplazar: bool):
             print(f"  {t}: {len(filas)} filas cargadas")
         # Todo o nada: si algo falla, la transacción se revierte al salir del bloque.
         for t in ORDEN_CARGA:
-            cur.execute(f"select count(*) from public.{t}")
+            filtro = f" where {DEL_EXCEL}" if t == "participaciones" else ""
+            cur.execute(f"select count(*) from public.{t}{filtro}")
             if cur.fetchone()[0] != len(datos[t][2]):
                 raise RuntimeError(f"El conteo de {t} no coincide; se revierte la carga.")
     print("Carga completa y verificada.")
