@@ -31,7 +31,7 @@ export const GUIA: CategoriaGuia[] = [
       {
         pregunta: '¿Cómo entro al módulo de administración?',
         pasos: [
-          'Abra la dirección del sitio y agregue /admin al final (por ejemplo: adopaso.com/admin).',
+          'Abra la dirección del sitio y agregue /admin al final (por ejemplo: adopaso.vercel.app/admin).',
           'Escriba su correo y su contraseña.',
           'Pulse «Entrar». Verá la pantalla «Resumen».',
         ],
@@ -301,9 +301,39 @@ export const GUIA: CategoriaGuia[] = [
         pasos: [
           'En «Códigos de acceso», pulse «+ Mesa técnica» y «+ Pre-pista».',
           'Para cada juez, elíjalo en la lista y pulse «+ Juez 1», «+ Juez 2»… (hasta cinco).',
-          'Cada puesto recibe un código de 8 letras. Pulse «Copiar enlace» y envíeselo a la persona, o dígale que entre a la dirección del sitio con /pista al final y escriba el código.',
+          'Cada puesto recibe un código de 8 letras. Pulse «Copiar enlace» en ese código y péguelo en un WhatsApp o correo para esa persona.',
         ],
         nota: 'No necesitan usuario ni contraseña. Los códigos dejan de funcionar al pulsar «Finalizar competencia». Si quita el código de un juez, se borran también sus votos.',
+      },
+      {
+        pregunta: '¿El enlace es por categoría o por persona?',
+        respuesta:
+          'Por persona (por puesto), no por categoría. Cada puesto recibe un solo enlace: uno para la pre-pista, uno para la mesa técnica y uno para cada juez. Con ese enlace la persona ve todas las categorías de la competencia y escoge la que está en pista en la lista «Categoría» de su pantalla.',
+        pasos: [
+          'Pre-pista: ve el número y el nombre de cada caballo y marca «Asistió» o «No asistió».',
+          'Mesa técnica: ve todo, desde la asistencia y los votos de cada juez hasta quién pasa, las excusas y la hoja de cómputo.',
+          'Cada juez: ve solo números, nunca nombres, y solo su propia libreta.',
+        ],
+      },
+      {
+        pregunta: '¿Cómo es el enlace y cómo entra la persona?',
+        pasos: [
+          'El enlace lleva el código incluido, por ejemplo: adopaso.vercel.app/pista/K7M2QX9P. La persona solo lo abre en su celular o tableta y entra directo.',
+          'Si no tiene el enlace a mano, puede abrir adopaso.vercel.app/pista y escribir su código de 8 letras.',
+          'Arriba de su pantalla aparece su puesto, por ejemplo «Juez 2 · Juan Pérez». Así confirma que entró con el código correcto.',
+        ],
+        nota: 'El celular recuerda el código: si la persona cierra la página y vuelve a /pista, entra sola. Con «Salir» puede usar otro código.',
+      },
+      {
+        pregunta: '¿Los códigos sirven para la próxima competencia?',
+        respuesta:
+          'No. Los códigos son de cada competencia. En la próxima se crean códigos nuevos y se envían otra vez. Los de una competencia finalizada ya no entran.',
+      },
+      {
+        pregunta: '¿Qué hago si un enlace llega a quien no debe?',
+        respuesta:
+          'El enlace funciona como una llave: quien lo tenga entra a ese puesto. Envíelo solo a la persona de ese puesto. Si llegó a otra persona, pulse «Quitar» en ese código, cree uno nuevo para el mismo puesto y envíelo de nuevo. El código viejo deja de funcionar al instante.',
+        nota: 'Si es el código de un juez, al quitarlo se borran también los votos que ya hizo. Hágalo antes de que empiece a votar, o pídale que vuelva a votar con el código nuevo.',
       },
       {
         pregunta: '¿Qué hace la pre-pista?',
