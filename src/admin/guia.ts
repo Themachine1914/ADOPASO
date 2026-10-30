@@ -260,6 +260,141 @@ export const GUIA: CategoriaGuia[] = [
     ],
   },
   {
+    id: 'competencias-en-vivo',
+    titulo: 'Competencias en vivo',
+    resumen:
+      'Crear la competencia, inscribir caballos, numerarlos por edad y dar acceso a pre-pista, jueces y mesa técnica desde el celular.',
+    soloAdmin: true,
+    articulos: [
+      {
+        pregunta: '1. ¿Cómo creo una competencia?',
+        pasos: [
+          'Entre a «Competencias en vivo» en el menú.',
+          'En «Tomar del calendario» elija el evento: se llenan solos el nombre, la fecha y el lugar. Si no está en el calendario, escríbalos a mano.',
+          'Pulse «Crear competencia». Se abre la pantalla de la competencia.',
+        ],
+        nota: 'La fecha importa: la edad de cada caballo se cuenta a ese día para saber en qué categoría compite.',
+        enlace: { to: '/admin/competencias', label: 'Abrir Competencias en vivo' },
+      },
+      {
+        pregunta: '2. ¿Cómo inscribo un caballo cuando llaman?',
+        pasos: [
+          'En «Inscribir un caballo», escriba el nombre o el número de registro y elija el caballo de la lista.',
+          'Se muestra cuántos meses tendrá el día de la competencia y las categorías que le tocan por edad y sexo. Primero salen las de su modalidad.',
+          'Marque «Pagó la inscripción» si ya pagó.',
+          'Pulse «Registrar» en la categoría que eligió el dueño.',
+        ],
+        nota: 'Si el caballo no tiene fecha de nacimiento en el registro, no se puede inscribir: complétela primero en «Registro de caballos». El pago se puede marcar o quitar después en la lista de inscritos.',
+      },
+      {
+        pregunta: '3. ¿Cómo cierro la inscripción y numero los caballos?',
+        pasos: [
+          'Cuando ya no se reciban más inscripciones, pulse «Cerrar inscripción y numerar».',
+          'Cada categoría se numera sola: el caballo más adulto lleva el número 1 y el más joven el número más alto.',
+          'Las categorías pasan a «Pre-pista».',
+        ],
+        nota: 'Si inscribe un caballo después de numerar, pulse «Volver a numerar». Solo se puede mientras ningún juez haya votado.',
+      },
+      {
+        pregunta: '4. ¿Cómo doy acceso a pre-pista, jueces y mesa técnica?',
+        pasos: [
+          'En «Códigos de acceso», pulse «+ Mesa técnica» y «+ Pre-pista».',
+          'Para cada juez, elíjalo en la lista y pulse «+ Juez 1», «+ Juez 2»… (hasta cinco).',
+          'Cada puesto recibe un código de 8 letras. Pulse «Copiar enlace» y envíeselo a la persona, o dígale que entre a la dirección del sitio con /pista al final y escriba el código.',
+        ],
+        nota: 'No necesitan usuario ni contraseña. Los códigos dejan de funcionar al pulsar «Finalizar competencia». Si quita el código de un juez, se borran también sus votos.',
+      },
+      {
+        pregunta: '¿Qué hace la pre-pista?',
+        respuesta:
+          'Ve la lista de cada categoría con número y nombre, y marca «Asistió» o «No asistió». El que no asistió queda fuera: los jueces no lo pueden marcar ni votar.',
+      },
+      {
+        pregunta: '¿Qué hacen los jueces?',
+        pasos: [
+          'Formato A: tocan los números que quieren ver en el recorrido individual. Pueden marcar varios.',
+          'Votación final: eligen el número para el 1.º, 2.º, 3.º, 4.º y 5.º lugar. Un número no se puede repetir.',
+        ],
+        nota: 'Los jueces solo ven números, nunca nombres ni propietarios, y cada uno ve solo su propia libreta. Solo pueden votar cuando la mesa técnica abre ese paso.',
+      },
+      {
+        pregunta: '¿Qué hace la mesa técnica?',
+        pasos: [
+          'Cambia el paso de cada categoría: Pre-pista → Formato A → Recorrido individual → Votación final → Cerrada.',
+          'En el formato A ve cuántos jueces marcaron cada número y marca «Pasa» en los que van al recorrido individual. La lista aparece en grande para que el narrador la anuncie.',
+          'Excusa un ejemplar si hace falta, solo por estos motivos: acto de indocilidad, fuera de la modalidad, lo pidió el exhibidor o situación sanitaria. El excusado sale del recorrido y se borran sus votos.',
+          'Ve las libretas de todos los jueces y la hoja de cómputo con el puesto de cada ejemplar. Gana la suma más baja.',
+        ],
+      },
+      {
+        pregunta: '¿Cada cuánto se actualizan las pantallas?',
+        respuesta:
+          'Cada 4 segundos, solas. Lo que marca la pre-pista o vota un juez aparece en la mesa técnica en ese tiempo, sin recargar la página.',
+      },
+      {
+        pregunta: '¿Los resultados pasan al ranking?',
+        pendiente: true,
+        respuesta: 'Todavía no. La hoja de cómputo da el puesto de cada ejemplar, pero ese resultado aún no se suma al ranking público.',
+      },
+    ],
+  },
+  {
+    id: 'simulacion',
+    titulo: 'Simulación de prueba',
+    resumen: 'Ensayar una competencia completa para probar los pasos y los accesos, o para mostrársela a un cliente.',
+    soloAdmin: true,
+    articulos: [
+      {
+        pregunta: '¿Para qué sirve la simulación?',
+        respuesta:
+          'Es una competencia de práctica con fecha de hoy. Sirve para enseñarle al cliente lo que ve cada puesto (mesa técnica, pre-pista y jueces) y para comprobar que cada paso y cada acceso funcionan antes de una competencia real. No es oficial, no cuenta para el ranking y se puede borrar.',
+      },
+      {
+        pregunta: '1. ¿Cómo creo una simulación?',
+        pasos: [
+          'Entre a «Competencias en vivo» en el menú.',
+          'Pulse «Crear simulación de prueba», arriba a la derecha.',
+          'Espere unos segundos: se inscriben caballos reales del registro en tres categorías y se crean los códigos de mesa técnica, pre-pista y tres jueces de prueba.',
+          'Se abre solo el «Ensayo de competencia».',
+        ],
+        nota: 'En la lista de competencias, las simulaciones dicen «Simulación». En las pantallas de pista aparece el aviso «SIMULACIÓN · no es oficial».',
+        enlace: { to: '/admin/competencias', label: 'Abrir Competencias en vivo' },
+      },
+      {
+        pregunta: '2. ¿Cómo le enseño al cliente lo que ve cada puesto?',
+        pasos: [
+          'En «Códigos de prueba», pulse «Ver todas las pantallas lado a lado». Aparecen las cinco pantallas una al lado de la otra, del tamaño de un celular.',
+          'O pulse «Abrir en otra pestaña» en cada código para verlas por separado.',
+          'Para que sea más real, dele al cliente un código de juez: que lo abra en su celular y vote él mismo.',
+        ],
+      },
+      {
+        pregunta: '3. ¿Cómo avanzo los pasos?',
+        pasos: [
+          'En «Pasos», pulse «Ejecutar» en cada paso, en orden: numerar, pre-pista, formato A, la mesa escoge, votación y cierre. El sistema hace lo que haría cada puesto con su código.',
+          'Después de cada paso, mire cómo cambian las pantallas.',
+          'Si prefiere hacerlo a mano, use los celulares con los códigos: el ensayo también lo registra.',
+          'Para verlo todo de una vez, pulse «Simular la competencia completa».',
+        ],
+      },
+      {
+        pregunta: '4. ¿Cómo sé que todo salió bien?',
+        respuesta:
+          '«Revisión de los pasos» marca cada paso con ✓ (bien), ✗ (algo está mal) o … (falta hacerlo). Revisa que cada caballo esté en su categoría, que la numeración vaya del más adulto al más joven, que nadie ausente o excusado pase al recorrido, que los votos sean válidos y que salga el ganador de cada categoría. Se actualiza sola cada 5 segundos.',
+        nota: 'Si aparece una ✗, tome una captura y envíela a soporte.',
+      },
+      {
+        pregunta: '5. ¿Cómo pruebo los accesos?',
+        respuesta:
+          'Pulse «Probar accesos». El sistema intenta entrar con un código inventado y que cada puesto haga lo que no le toca: que un juez vea nombres o votos de otro, que un juez escoja o cambie el paso, que la pre-pista vote. Todo debe salir con ✓, es decir, rechazado.',
+      },
+      {
+        pregunta: '6. ¿Cómo borro la simulación?',
+        pasos: ['Al final del ensayo, pulse «Borrar simulación».', 'Se eliminan sus inscripciones, votos y códigos. Los caballos del registro no se tocan.'],
+      },
+    ],
+  },
+  {
     id: 'juzgamiento',
     titulo: 'Juzgamiento en vivo',
     resumen: 'Abrir una clase, anotar ejemplares y jueces, votar en la libreta F-2 y sacar la hoja de cómputo.',

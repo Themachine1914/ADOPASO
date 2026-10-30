@@ -92,9 +92,14 @@ export function AdminLayout() {
             Guía de uso
           </NavLink>
           {esAdmin ? (
-            <NavLink to="/admin/juzgamiento" className={enlace}>
-              Juzgamiento
-            </NavLink>
+            <>
+              <NavLink to="/admin/competencias" className={enlace}>
+                Competencias en vivo
+              </NavLink>
+              <NavLink to="/admin/juzgamiento" className={enlace}>
+                Juzgamiento
+              </NavLink>
+            </>
           ) : null}
           {GRUPOS.map((grupo) => {
             const items = visibles.filter((c) => c.grupo === grupo)
