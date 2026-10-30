@@ -123,9 +123,9 @@ export const GUIA: CategoriaGuia[] = [
       },
       {
         pregunta: '¿Cómo registro los resultados de una competencia desde la pantalla?',
-        pendiente: true,
         respuesta:
-          'Todavía no se puede. Por ahora los resultados entran importando el Excel. El juzgamiento en vivo calcula los puestos de una clase, pero ese resultado todavía no pasa al ranking.',
+          'Con «Competencias en vivo»: los jueces votan desde el celular y, cuando la mesa técnica cierra las categorías, la administración revisa los resultados y pulsa «Sincronizar con el ranking». Las competencias que no se hicieron en vivo siguen entrando con el Excel.',
+        enlace: { to: '/admin/guia#competencias-en-vivo', label: 'Ver: Competencias en vivo' },
       },
       {
         pregunta: '¿Cómo agrego una fecha al calendario?',
@@ -281,10 +281,11 @@ export const GUIA: CategoriaGuia[] = [
         pasos: [
           'En «Inscribir un caballo», escriba el nombre o el número de registro y elija el caballo de la lista.',
           'Se muestra cuántos meses tendrá el día de la competencia y las categorías que le tocan por edad y sexo. Primero salen las de su modalidad.',
+          'En «Montador», busque y elija quién lo va a montar. Sin montador, esa persona no recibe sus puntos.',
           'Marque «Pagó la inscripción» si ya pagó.',
           'Pulse «Registrar» en la categoría que eligió el dueño.',
         ],
-        nota: 'Si el caballo no tiene fecha de nacimiento en el registro, no se puede inscribir: complétela primero en «Registro de caballos». El pago se puede marcar o quitar después en la lista de inscritos.',
+        nota: 'Si el caballo no tiene fecha de nacimiento en el registro, no se puede inscribir: complétela primero en «Registro de caballos». El pago y el montador se pueden cambiar después en la lista de inscritos, hasta la pre-pista.',
       },
       {
         pregunta: '3. ¿Cómo cierro la inscripción y numero los caballos?',
@@ -332,9 +333,14 @@ export const GUIA: CategoriaGuia[] = [
           'Cada 4 segundos, solas. Lo que marca la pre-pista o vota un juez aparece en la mesa técnica en ese tiempo, sin recargar la página.',
       },
       {
-        pregunta: '¿Los resultados pasan al ranking?',
-        pendiente: true,
-        respuesta: 'Todavía no. La hoja de cómputo da el puesto de cada ejemplar, pero ese resultado aún no se suma al ranking público.',
+        pregunta: '5. ¿Cómo paso los resultados al ranking?',
+        pasos: [
+          'Cuando la mesa técnica cierre todas las categorías, abra la competencia y baje a «Resultados».',
+          'Revise cada categoría: puesto, número, caballo, propietario, criador, montador y puntos (1.º 10, 2.º 7 y 3.º 5). Lea los avisos: categorías sin cerrar, categorías sin ganador o premiados sin montador.',
+          'Si todo está bien, pulse «Sincronizar con el ranking» y confirme.',
+          'Los resultados pasan a «Resultados» y al ranking público: caballos, propietarios, criadores y montadores. La competencia queda finalizada.',
+        ],
+        nota: 'Entran todos los que asistieron; los que no asistieron no cuentan. Si encuentra un error después, pulse «Deshacer sincronización», corrija y vuelva a sincronizar. Una competencia sincronizada no se puede eliminar, y una simulación nunca se sincroniza.',
       },
     ],
   },
@@ -387,6 +393,11 @@ export const GUIA: CategoriaGuia[] = [
         pregunta: '5. ¿Cómo pruebo los accesos?',
         respuesta:
           'Pulse «Probar accesos». El sistema intenta entrar con un código inventado y que cada puesto haga lo que no le toca: que un juez vea nombres o votos de otro, que un juez escoja o cambie el paso, que la pre-pista vote. Todo debe salir con ✓, es decir, rechazado.',
+      },
+      {
+        pregunta: '¿Cómo le enseño al cliente el paso al ranking?',
+        respuesta:
+          'Después de ejecutar todos los pasos, pulse «Ver la competencia» y baje a «Resultados». Ahí está la revisión con el puesto, los puntos y el montador de cada premiado, igual que en una competencia real. El botón «Sincronizar con el ranking» queda apagado porque es una simulación: el ranking oficial no se toca.',
       },
       {
         pregunta: '6. ¿Cómo borro la simulación?',
@@ -454,9 +465,9 @@ export const GUIA: CategoriaGuia[] = [
       },
       {
         pregunta: '¿El resultado del juzgamiento pasa al ranking?',
-        pendiente: true,
         respuesta:
-          'Todavía no. La hoja de cómputo da los puestos de la clase, pero no se guardan en «Resultados» ni suman puntos en el ranking. Esa conexión está pendiente.',
+          'Las clases que se abren aquí, sueltas, no. Las que forman parte de una competencia de «Competencias en vivo» sí: se revisan y se sincronizan desde la pantalla de la competencia.',
+        enlace: { to: '/admin/guia#competencias-en-vivo', label: 'Ver: Competencias en vivo' },
       },
     ],
   },
@@ -566,11 +577,7 @@ export const GUIA: CategoriaGuia[] = [
         pendiente: true,
       },
       {
-        pregunta: 'Pasar el resultado del juzgamiento en vivo a «Resultados» y al ranking',
-        pendiente: true,
-      },
-      {
-        pregunta: 'Registrar resultados de competencia sin usar Excel',
+        pregunta: 'Registrar a mano resultados de una competencia que no se hizo en vivo (sin Excel)',
         pendiente: true,
       },
     ],

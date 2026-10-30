@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AyudaGuia } from '../../components/AyudaGuia'
+import type { BuscaLista } from '../../admin/categorias'
 import { useAuth } from '../../lib/auth-context'
 import {
   borrarAcceso,
   buscarCaballos,
+  cambiarMontador,
   cargarCompetencia,
   categoriasDelCaballo,
   crearAcceso,
@@ -24,6 +26,11 @@ import {
 } from '../../lib/competencia'
 import { formatFechaEmision, formatNombre } from '../../lib/format'
 import { listarJueces, type JuezCatalogo } from '../../lib/juzgamiento'
+import { ResultadosCompetencia } from './ResultadosCompetencia'
+import { SelectorBusqueda } from './SelectorBusqueda'
+
+/** El ranking agrupa a las personas por nombre, así que del montador se guarda el nombre. */
+const MONTADORES: BuscaLista = { tabla: 'montadores', valor: 'nombre', etiqueta: 'nombre' }
 
 export function AdminCompetencia() {
   const { perfil } = useAuth()
@@ -110,7 +117,9 @@ export function AdminCompetencia() {
         <Inscripcion
           fecha={competencia.fecha}
           catalogo={catalogo}
-          onInscribir={(categoria, caballo, pagado) => hacer(() => inscribir(competencia.id, categoria, caballo, pagado))}
+          onInscribir={(categoria, caballo, pagado, montador) =>
+            hacer(() => inscribir(competencia.id, categoria, caballo, pagado, montador))
+          }
         />
       ) : null}
 
@@ -159,6 +168,7 @@ export function AdminCompetencia() {
                       <th className="px-4 py-2">No.</th>
                       <th className="px-4 py-2">Caballo</th>
                       <th className="hidden px-4 py-2 sm:table-cell">Propietario</th>
+                      <th className="px-4 py-2">Montador</th>
                       <th className="px-4 py-2">Pagó</th>
                       <th className="px-4 py-2" />
                     </tr>
@@ -175,6 +185,20 @@ export function AdminCompetencia() {
                           </span>
                         </td>
                         <td className="hidden px-4 py-2 sm:table-cell">{formatNombre(item.propietario)}</td>
+                        <td className="min-w-[12rem] px-4 py-2">
+                          {clase.fase === 'inscripcion' || clase.fase === 'prepista' ? (
+                            <SelectorBusqueda
+                              busca={MONTADORES}
+                              valor={item.montador ?? ''}
+                              etiqueta={formatNombre(item.montador)}
+                              onElegir={(opcion) => void hacer(() => cambiarMontador(item.id, opcion?.valor ?? null))}
+                            />
+                          ) : item.montador ? (
+                            formatNombre(item.montador)
+                          ) : (
+                            <span className="text-flag-red">Sin montador</span>
+                          )}
+                        </td>
                         <td className="px-4 py-2">
                           <input
                             type="checkbox"
@@ -209,6 +233,8 @@ export function AdminCompetencia() {
         )}
       </section>
 
+      <ResultadosCompetencia competencia={competencia} onCambio={recargar} />
+
       <Accesos
         detalle={detalle}
         jueces={jueces}
@@ -232,17 +258,20 @@ export function AdminCompetencia() {
         ) : (
           <p className="typo-meta">Competencia finalizada. Los códigos ya no funcionan.</p>
         )}
-        <button
-          type="button"
-          className="typo-meta text-muted underline"
-          onClick={async () => {
-            if (!window.confirm('¿Eliminar la competencia con sus inscripciones y votaciones?')) return
-            await eliminarCompetencia(competencia.id)
-            navigate('/admin/competencias')
-          }}
-        >
-          Eliminar competencia
-        </button>
+        {/* Una competencia ya sincronizada no se borra: primero hay que deshacer la sincronización. */}
+        {!competencia.sincronizadoEn ? (
+          <button
+            type="button"
+            className="typo-meta text-muted underline"
+            onClick={async () => {
+              if (!window.confirm('¿Eliminar la competencia con sus inscripciones y votaciones?')) return
+              await eliminarCompetencia(competencia.id)
+              navigate('/admin/competencias')
+            }}
+          >
+            Eliminar competencia
+          </button>
+        ) : null}
       </section>
     </div>
   )
@@ -255,13 +284,19 @@ function Inscripcion({
 }: {
   fecha: string
   catalogo: CategoriaCatalogo[]
-  onInscribir: (categoria: CategoriaCatalogo, caballo: CaballoInscribible, pagado: boolean) => Promise<void>
+  onInscribir: (
+    categoria: CategoriaCatalogo,
+    caballo: CaballoInscribible,
+    pagado: boolean,
+    montador: string | null,
+  ) => Promise<void>
 }) {
   const [busqueda, setBusqueda] = useState('')
   const [resultados, setResultados] = useState<CaballoInscribible[]>([])
   const [caballo, setCaballo] = useState<CaballoInscribible | null>(null)
   const [pagado, setPagado] = useState(false)
   const [verTodas, setVerTodas] = useState(false)
+  const [montador, setMontador] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
 
   useEffect(() => {
@@ -316,6 +351,7 @@ function Inscripcion({
                   setCaballo(item)
                   setVerTodas(false)
                   setPagado(false)
+                  setMontador(null)
                 }}
               >
                 <span className="typo-name text-sm">{formatNombre(item.nombre)}</span>
@@ -347,6 +383,15 @@ function Inscripcion({
             <p className="typo-meta mt-3 text-flag-red">Ninguna categoría corresponde a su sexo y edad.</p>
           ) : (
             <>
+              <div className="mt-4 max-w-sm">
+                <span className="typo-label">Montador</span>
+                <SelectorBusqueda
+                  busca={MONTADORES}
+                  valor={montador ?? ''}
+                  etiqueta={formatNombre(montador)}
+                  onElegir={(opcion) => setMontador(opcion?.valor ?? null)}
+                />
+              </div>
               <label className="typo-meta mt-4 flex items-center gap-2">
                 <input type="checkbox" checked={pagado} onChange={(e) => setPagado(e.target.checked)} />
                 Pagó la inscripción
@@ -368,7 +413,7 @@ function Inscripcion({
                       onClick={async () => {
                         setAviso(null)
                         try {
-                          await onInscribir(categoria, caballo, pagado)
+                          await onInscribir(categoria, caballo, pagado, montador)
                           setAviso(`${formatNombre(caballo.nombre)} quedó inscrito en ${categoria.nombre}.`)
                           setCaballo(null)
                           setBusqueda('')

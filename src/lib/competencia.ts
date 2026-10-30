@@ -49,6 +49,7 @@ export interface Competencia {
   lugar: string | null
   estado: 'inscripcion' | 'en_curso' | 'finalizada'
   simulacion: boolean
+  sincronizadoEn: string | null
 }
 
 export interface Inscripcion {
@@ -59,6 +60,7 @@ export interface Inscripcion {
   sexo: string | null
   nacimiento: string | null
   propietario: string | null
+  montador: string | null
   pagado: boolean
   asistio: boolean | null
 }
@@ -122,13 +124,14 @@ function mapCompetencia(row: Record<string, unknown>): Competencia {
     lugar: texto(row.lugar),
     estado: String(row.estado) as Competencia['estado'],
     simulacion: Boolean(row.simulacion),
+    sincronizadoEn: typeof row.sincronizado_en === 'string' ? row.sincronizado_en : null,
   }
 }
 
 export async function listarCompetencias(): Promise<Competencia[]> {
   const { data, error } = await supabase
     .from('competencias')
-    .select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion')
+    .select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion, sincronizado_en')
     .order('fecha', { ascending: false })
   if (error) throw error
   return (data ?? []).map(mapCompetencia)
@@ -158,11 +161,11 @@ export async function crearCompetencia(input: {
 
 export async function cargarCompetencia(id: string): Promise<DetalleCompetencia | null> {
   const [competencia, clases, accesos] = await Promise.all([
-    supabase.from('competencias').select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion').eq('id', id).maybeSingle(),
+    supabase.from('competencias').select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion, sincronizado_en').eq('id', id).maybeSingle(),
     supabase
       .from('juzgamientos')
       .select(
-        'id, evento_codigo, categoria, fase, orden, juzgamiento_ejemplares (id, numero, caballo_codigo, nombre, sexo, nacimiento, propietario, pagado, asistio)',
+        'id, evento_codigo, categoria, fase, orden, juzgamiento_ejemplares (id, numero, caballo_codigo, nombre, sexo, nacimiento, propietario, montador, pagado, asistio)',
       )
       .eq('competencia_id', id)
       .order('orden', { ascending: true }),
@@ -188,6 +191,7 @@ export async function cargarCompetencia(id: string): Promise<DetalleCompetencia 
           sexo: texto(e.sexo),
           nacimiento: fecha(e.nacimiento),
           propietario: texto(e.propietario),
+          montador: texto(e.montador),
           pagado: Boolean(e.pagado),
           asistio: e.asistio == null ? null : Boolean(e.asistio),
         }))
@@ -356,6 +360,7 @@ export async function inscribir(
   categoria: CategoriaCatalogo,
   caballo: CaballoInscribible,
   pagado: boolean,
+  montador: string | null = null,
 ): Promise<void> {
   const claseId = await claseDeCategoria(competenciaId, categoria)
   const { error } = await supabase.from('juzgamiento_ejemplares').insert({
@@ -371,6 +376,7 @@ export async function inscribir(
     madre: caballo.madre,
     criador: caballo.criador,
     propietario: caballo.propietario,
+    montador,
     pagado,
     escogido: false,
   })
@@ -383,9 +389,70 @@ export async function marcarPagado(inscripcionId: string, pagado: boolean): Prom
   if (error) throw error
 }
 
+export async function cambiarMontador(inscripcionId: string, montador: string | null): Promise<void> {
+  const { error } = await supabase.from('juzgamiento_ejemplares').update({ montador }).eq('id', inscripcionId)
+  if (error) throw error
+}
+
 export async function quitarInscripcion(inscripcionId: string): Promise<void> {
   const { error } = await supabase.from('juzgamiento_ejemplares').delete().eq('id', inscripcionId)
   if (error) throw error
+}
+
+// ---------------------------------------------------------------------------
+// Resultados: revisión y sincronización con el ranking
+// ---------------------------------------------------------------------------
+
+/** Resultado de un ejemplar, calculado en la base igual que la hoja de cómputo. */
+export interface ResultadoEjemplar {
+  claseId: string
+  categoria: string
+  fase: Fase
+  numero: number | null
+  caballoNombre: string
+  propietario: string | null
+  criador: string | null
+  montador: string | null
+  asistio: boolean | null
+  escogido: boolean
+  excusa: Excusa | null
+  total: number | null
+  puesto: number | null
+  puntos: number
+}
+
+export async function resultadosCompetencia(competenciaId: string): Promise<ResultadoEjemplar[]> {
+  const { data, error } = await supabase.rpc('resultados_competencia', { p_competencia: competenciaId })
+  if (error) throw error
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    claseId: String(row.clase_id),
+    categoria: String(row.categoria ?? ''),
+    fase: String(row.fase) as Fase,
+    numero: row.numero == null ? null : Number(row.numero),
+    caballoNombre: String(row.caballo_nombre ?? ''),
+    propietario: texto(row.propietario),
+    criador: texto(row.criador),
+    montador: texto(row.montador),
+    asistio: row.asistio == null ? null : Boolean(row.asistio),
+    escogido: Boolean(row.escogido),
+    excusa: (texto(row.excusa) as Excusa | null) ?? null,
+    total: row.total == null ? null : Number(row.total),
+    puesto: row.puesto == null ? null : Number(row.puesto),
+    puntos: Number(row.puntos ?? 0),
+  }))
+}
+
+/** Pasa los resultados a Resultados y al ranking. Devuelve cuántas filas se agregaron. */
+export async function sincronizarCompetencia(competenciaId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('sincronizar_competencia', { p_competencia: competenciaId })
+  if (error) throw new Error(error.message)
+  return Number(data ?? 0)
+}
+
+export async function deshacerSincronizacion(competenciaId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('deshacer_sincronizacion', { p_competencia: competenciaId })
+  if (error) throw new Error(error.message)
+  return Number(data ?? 0)
 }
 
 /** Cierra la inscripción: numera cada categoría del más adulto (1) al más joven. */
