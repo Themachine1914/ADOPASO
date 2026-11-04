@@ -7,9 +7,12 @@ import { useAuth } from '../../lib/auth-context'
 export function FranjaAdmin() {
   return (
     <div className="bg-gold text-bg">
-      <div className="container-app flex h-9 items-center justify-between gap-3">
-        <p className="typo-btn tracking-[0.14em]">Administración</p>
-        <Link to="/" className="typo-meta font-medium text-bg underline decoration-bg/40 underline-offset-2">
+      <div className="container-app flex h-3 items-center justify-end">
+        <Link to="/" className="inline-flex items-center gap-1 text-[10px] font-medium leading-none text-bg">
+          <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1 1 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          </svg>
           Ver sitio público
         </Link>
       </div>
@@ -105,7 +108,7 @@ export function AdminLayout() {
       <div className="container-app grid gap-8 py-8 md:grid-cols-[14rem_1fr]">
         <nav
           aria-label="Categorías"
-          className="admin-nav-scroll md:sticky md:top-[6.5rem] md:max-h-[calc(100dvh-8.5rem)] md:self-start md:overflow-y-auto md:overscroll-contain md:pb-4 md:pr-1"
+          className="admin-nav-scroll md:sticky md:top-[4.75rem] md:max-h-[calc(100dvh-6.75rem)] md:self-start md:overflow-y-auto md:overscroll-contain md:pb-4 md:pr-1"
         >
           <NavLink to="/admin" end className={enlace}>
             Resumen
