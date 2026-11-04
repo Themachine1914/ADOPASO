@@ -4,6 +4,19 @@ import { CATEGORIAS, GRUPOS } from '../../admin/categorias'
 import { Skeleton } from '../../components/Skeleton'
 import { useAuth } from '../../lib/auth-context'
 
+export function FranjaAdmin() {
+  return (
+    <div className="bg-gold text-bg">
+      <div className="container-app flex h-9 items-center justify-between gap-3">
+        <p className="typo-btn tracking-[0.14em]">Administración</p>
+        <Link to="/" className="typo-meta font-medium text-bg underline decoration-bg/40 underline-offset-2">
+          Ver sitio público
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 export function AdminLayout() {
   const { cargando, session, perfil, cerrarSesion } = useAuth()
 
@@ -18,9 +31,12 @@ export function AdminLayout() {
 
   if (cargando) {
     return (
-      <div className="container-app space-y-4 py-16" role="status" aria-label="Cargando">
-        <Skeleton className="h-8 w-56" />
-        <Skeleton className="h-40 w-full" />
+      <div className="min-h-screen bg-bg text-ink">
+        <FranjaAdmin />
+        <div className="container-app space-y-4 py-16" role="status" aria-label="Cargando">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-40 w-full" />
+        </div>
       </div>
     )
   }
@@ -28,7 +44,9 @@ export function AdminLayout() {
 
   if (!perfil || !perfil.activo) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg px-4 text-ink">
+      <div className="flex min-h-screen flex-col bg-bg text-ink">
+        <FranjaAdmin />
+        <div className="flex flex-1 items-center justify-center px-4">
         <div className="max-w-md text-center">
           <p className="typo-eyebrow">Acceso pendiente</p>
           <h1 className="typo-section mt-2">Su cuenta aún no está activa</h1>
@@ -42,6 +60,7 @@ export function AdminLayout() {
           >
             Cerrar sesión
           </button>
+        </div>
         </div>
       </div>
     )
@@ -58,7 +77,9 @@ export function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-bg text-ink">
-      <header className="sticky top-0 z-40 border-b border-border/80 bg-bg/90 backdrop-blur-md">
+      <div className="sticky top-0 z-40">
+      <FranjaAdmin />
+      <header className="border-b border-border/80 bg-bg/90 backdrop-blur-md">
         <div className="container-app flex h-16 items-center justify-between gap-3">
           <Link to="/admin" className="flex items-center gap-3">
             <img src="/logo-adopaso.png" alt="ADOPASO" className="h-10 w-auto rounded-[10px]" />
@@ -79,11 +100,12 @@ export function AdminLayout() {
           </div>
         </div>
       </header>
+      </div>
 
       <div className="container-app grid gap-8 py-8 md:grid-cols-[14rem_1fr]">
         <nav
           aria-label="Categorías"
-          className="admin-nav-scroll md:sticky md:top-24 md:max-h-[calc(100dvh-7.5rem)] md:self-start md:overflow-y-auto md:overscroll-contain md:pb-4 md:pr-1"
+          className="admin-nav-scroll md:sticky md:top-[6.5rem] md:max-h-[calc(100dvh-8.5rem)] md:self-start md:overflow-y-auto md:overscroll-contain md:pb-4 md:pr-1"
         >
           <NavLink to="/admin" end className={enlace}>
             Resumen

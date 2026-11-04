@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
+import { FranjaAdmin } from './AdminLayout'
 import { useAuth } from '../../lib/auth-context'
 import { supabaseConfigurado } from '../../lib/supabase'
 
@@ -21,7 +22,9 @@ export function AdminLogin() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-10 text-ink">
+    <div className="flex min-h-screen flex-col bg-bg text-ink">
+      <FranjaAdmin />
+      <div className="flex flex-1 items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <img src="/logo-adopaso.png" alt="ADOPASO" className="mx-auto mb-6 h-16 w-auto rounded-[12px]" />
         <p className="typo-eyebrow text-center">Administración</p>
@@ -72,6 +75,7 @@ export function AdminLogin() {
         <p className="typo-caption mt-6 text-center">
           El acceso lo crea un administrador. No hay registro abierto.
         </p>
+      </div>
       </div>
     </div>
   )

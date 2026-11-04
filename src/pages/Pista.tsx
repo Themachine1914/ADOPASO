@@ -7,6 +7,7 @@ import {
   etiquetaAcceso,
   etiquetaExcusa,
   etiquetaFase,
+  faltantesParaFase,
   FASES,
   limpiarCodigo,
   pistaAsistencia,
@@ -388,6 +389,9 @@ function Mesa({
 }) {
   const lista = numerados(clase)
   const puestos = estado.jueces.map((j) => j.puesto)
+  const fases = FASES.filter((f) => f.value !== 'inscripcion')
+  const [bloqueo, setBloqueo] = useState<{ fase: Fase; faltan: string[] } | null>(null)
+  useEffect(() => setBloqueo(null), [clase.id, clase.fase])
   const escogen = clase.fase === 'formato_a' || clase.fase === 'individual'
   const excusan = clase.fase === 'formato_a' || clase.fase === 'individual' || clase.fase === 'votacion'
   const pasan = lista.filter((item) => item.escogido && !item.excusa).map((item) => item.numero)
@@ -401,19 +405,64 @@ function Mesa({
     <div className="space-y-8">
       <section>
         <p className="typo-label">Fase de la clase</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {FASES.filter((f) => f.value !== 'inscripcion').map((f) => (
-            <Boton
-              key={f.value}
-              activo={clase.fase === f.value}
-              onClick={() => {
-                if (clase.fase !== f.value) void hacer(() => pistaFase(codigo, clase.id, f.value))
-              }}
-            >
-              {f.label}
-            </Boton>
-          ))}
+        <div className="mt-3 overflow-x-auto">
+        <ol className="flex items-start">
+          {fases.map((fase, indice) => {
+            const orden = fases.findIndex((item) => item.value === clase.fase)
+            const hecho = indice < orden
+            const activo = fase.value === clase.fase
+            return (
+              <li key={fase.value} className="flex min-w-0 flex-1 flex-col items-center">
+                <div className="flex w-full items-center">
+                  <span className={['h-px flex-1', indice === 0 ? 'bg-transparent' : hecho || activo ? 'bg-gold' : 'bg-border'].join(' ')} />
+                  <button
+                    type="button"
+                    aria-current={activo ? 'step' : undefined}
+                    aria-label={fase.label}
+                    onClick={() => {
+                      if (fase.value === clase.fase) {
+                        setBloqueo(null)
+                        return
+                      }
+                      const faltan = faltantesParaFase(clase, puestos, fase.value)
+                      if (faltan.length > 0) {
+                        setBloqueo({ fase: fase.value, faltan })
+                        return
+                      }
+                      setBloqueo(null)
+                      void hacer(() => pistaFase(codigo, clase.id, fase.value))
+                    }}
+                    className={[
+                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold',
+                      activo
+                        ? 'border-gold bg-gold text-bg'
+                        : hecho
+                          ? 'border-gold text-gold'
+                          : 'border-border text-muted',
+                    ].join(' ')}
+                  >
+                    {hecho ? '✓' : indice + 1}
+                  </button>
+                  <span className={['h-px flex-1', indice === fases.length - 1 ? 'bg-transparent' : indice < orden ? 'bg-gold' : 'bg-border'].join(' ')} />
+                </div>
+                <span className={['typo-caption mt-2 px-1 text-center', activo ? 'text-gold' : 'text-muted'].join(' ')}>
+                  {fase.label}
+                </span>
+              </li>
+            )
+          })}
+        </ol>
         </div>
+        {bloqueo ? (
+          <div role="alert" className="mt-4 rounded-[12px] border border-gold/60 bg-surface p-4">
+            <p className="typo-label">Para abrir {etiquetaFase(bloqueo.fase)} falta</p>
+            <ul className="typo-meta mt-2 list-disc space-y-1 pl-5">
+              {bloqueo.faltan.map((texto, indice) => (
+                <li key={`${indice}-${texto}`}>{texto}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
 
       <section className="rounded-[12px] border border-gold/60 bg-surface p-4">

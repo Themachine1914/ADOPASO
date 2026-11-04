@@ -351,7 +351,7 @@ export const GUIA: CategoriaGuia[] = [
       {
         pregunta: '¿Qué hace la mesa técnica?',
         pasos: [
-          'Cambia el paso de cada categoría: Pre-pista → Formato A → Recorrido individual → Votación final → Cerrada.',
+          'Cambia el paso de cada categoría en orden: Pre-pista → Formato A → Recorrido individual → Votación final → Cerrada. Si elige un paso que todavía no se puede abrir, la pantalla dice qué falta.',
           'En el formato A ve cuántos jueces marcaron cada número y marca «Pasa» en los que van al recorrido individual. La lista aparece en grande para que el narrador la anuncie.',
           'Excusa un ejemplar si hace falta, solo por estos motivos: acto de indocilidad, fuera de la modalidad, lo pidió el exhibidor o situación sanitaria. El excusado sale del recorrido y se borran sus votos.',
           'Ve las libretas de todos los jueces y la hoja de cómputo con el puesto de cada ejemplar. Gana la suma más baja.',

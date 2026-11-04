@@ -1,4 +1,5 @@
 import { mesesCumplidos, modalidadDeClase, sexoRegistro, type Modalidad } from './campeonato'
+import { LUGARES_PUESTO } from './computo'
 import { valorModalidadRegistro } from './registro'
 import { supabase } from './supabase'
 
@@ -521,6 +522,82 @@ export interface ClasePista {
   ejemplares: EjemplarPista[]
   formatoA: Array<{ juezPuesto: number; numero: number }>
   votos: Array<{ juezPuesto: number; lugar: string; numero: number }>
+}
+
+const ORDEN_FASE: Fase[] = ['inscripcion', 'prepista', 'formato_a', 'individual', 'votacion', 'cerrada']
+
+function nombreEjemplar(item: EjemplarPista): string {
+  const nombre = item.nombre?.trim()
+  return nombre ? `${item.numero} (${nombre})` : String(item.numero)
+}
+
+/**
+ * Lo que impide abrir una fase posterior. Volver a una fase anterior no exige nada.
+ * La edad no entra: se mira la asistencia, el formato A, quién pasa y la votación.
+ */
+export function faltantesParaFase(clase: ClasePista, jueces: number[], destino: Fase): string[] {
+  const actual = ORDEN_FASE.indexOf(clase.fase)
+  const hasta = ORDEN_FASE.indexOf(destino)
+  if (hasta <= actual) return []
+
+  const faltan: string[] = []
+  const lista = clase.ejemplares.filter((item) => item.numero != null)
+  const pasa = (item: EjemplarPista) => item.escogido && item.asistio !== false && !item.excusa
+
+  if (hasta >= ORDEN_FASE.indexOf('formato_a')) {
+    for (const item of lista) {
+      if (item.asistio == null) {
+        faltan.push(`El ejemplar ${nombreEjemplar(item)} no tiene asistencia de pre-pista.`)
+      }
+    }
+  }
+
+  if (hasta >= ORDEN_FASE.indexOf('individual')) {
+    if (jueces.length === 0) faltan.push('La competencia no tiene jueces con código.')
+    for (const puesto of jueces) {
+      if (!clase.formatoA.some((marca) => marca.juezPuesto === puesto)) {
+        faltan.push(`El juez ${puesto} no ha marcado el formato A.`)
+      }
+    }
+    for (const item of lista) {
+      if (item.escogido && (item.asistio === false || item.excusa)) {
+        faltan.push(`El ejemplar ${nombreEjemplar(item)} está ausente o excusado y está marcado como que pasa.`)
+      }
+    }
+    if (!lista.some(pasa)) faltan.push('Falta marcar quién pasa al recorrido individual.')
+  }
+
+  if (hasta >= ORDEN_FASE.indexOf('votacion') && actual < ORDEN_FASE.indexOf('individual')) {
+    faltan.push('Primero hay que abrir el recorrido individual.')
+  }
+
+  if (hasta >= ORDEN_FASE.indexOf('cerrada')) {
+    if (actual < ORDEN_FASE.indexOf('votacion')) {
+      faltan.push('Primero hay que abrir la votación final.')
+    }
+    const enFinal = lista.filter(pasa)
+    const validos = new Set(enFinal.map((item) => item.numero))
+    const lugares = Math.min(LUGARES_PUESTO.length, enFinal.length)
+    for (const puesto of jueces) {
+      const propios = clase.votos.filter((voto) => voto.juezPuesto === puesto)
+      const numeros = propios.map((voto) => voto.numero)
+      if (new Set(numeros).size !== numeros.length) {
+        faltan.push(`El juez ${puesto} repitió un número en la votación final.`)
+      }
+      for (const voto of propios) {
+        if (!validos.has(voto.numero)) {
+          faltan.push(`El juez ${puesto} votó al ejemplar ${voto.numero}, que no está en el recorrido.`)
+        }
+      }
+      const votados = new Set(propios.map((voto) => voto.lugar))
+      const sinVotar = LUGARES_PUESTO.slice(0, lugares).filter((lugar) => !votados.has(lugar))
+      if (sinVotar.length > 0) {
+        faltan.push(`Al juez ${puesto} le falta votar ${sinVotar.map((lugar) => `${lugar}.º`).join(', ')}.`)
+      }
+    }
+  }
+
+  return faltan
 }
 
 export interface EstadoPista {
