@@ -280,12 +280,12 @@ export const GUIA: CategoriaGuia[] = [
         pregunta: '2. ¿Cómo inscribo un caballo cuando llaman?',
         pasos: [
           'En «Inscribir un caballo», escriba el nombre o el número de registro y elija el caballo de la lista.',
-          'Se muestra cuántos meses tendrá el día de la competencia y las categorías que le tocan por edad y sexo. Primero salen las de su modalidad.',
-          'En «Montador», busque y elija quién lo va a montar. Sin montador, esa persona no recibe sus puntos.',
+          'Se muestra cuántos meses tendrá el día de la competencia, el último grupo en que compitió y las categorías que le tocan por edad y sexo. Primero sale la «Sugerida»: la de la modalidad de su último grupo, con la edad que tendrá ese día.',
+          'En «Montador», busque y elija quién lo va a montar. Sin montador, esa persona no recibe sus puntos. Si ese montador ya monta otro caballo en la misma categoría, el sistema le avisa antes de registrar.',
           'Marque «Pagó la inscripción» si ya pagó.',
           'Pulse «Registrar» en la categoría que eligió el dueño.',
         ],
-        nota: 'Si el caballo no tiene fecha de nacimiento en el registro, no se puede inscribir: complétela primero en «Registro de caballos». El pago y el montador se pueden cambiar después en la lista de inscritos, hasta la pre-pista.',
+        nota: 'Si el caballo no tiene fecha de nacimiento en el registro, no se puede inscribir: complétela primero en «Registro de caballos». Si se equivocó, pulse «Editar» en la lista de inscritos: cambia la categoría, el montador o el pago sin borrar la inscripción. La categoría solo se cambia hasta la pre-pista; después hay que volver a numerar. Si quita el único caballo de una categoría, la categoría se borra sola.',
       },
       {
         pregunta: '3. ¿Cómo cierro la inscripción y numero los caballos?',
@@ -294,14 +294,14 @@ export const GUIA: CategoriaGuia[] = [
           'Cada categoría se numera sola: el caballo más adulto lleva el número 1 y el más joven el número más alto.',
           'Las categorías pasan a «Pre-pista».',
         ],
-        nota: 'Si inscribe un caballo después de numerar, pulse «Volver a numerar». Solo se puede mientras ningún juez haya votado.',
+        nota: 'Si inscribe o cambia un caballo de categoría después de numerar, pulse «Volver a numerar». Solo cambian los números de las categorías que todavía no están en juzgamiento.',
       },
       {
         pregunta: '4. ¿Cómo doy acceso a pre-pista, jueces y mesa técnica?',
         pasos: [
           'En «Códigos de acceso», pulse «+ Mesa técnica» y «+ Pre-pista».',
           'Para cada juez, elíjalo en la lista y pulse «+ Juez 1», «+ Juez 2»… (hasta cinco).',
-          'Cada puesto recibe un código de 8 letras. Pulse «Copiar enlace» en ese código y péguelo en un WhatsApp o correo para esa persona.',
+          'Cada puesto recibe un código de 8 letras. Pulse «Enviar por WhatsApp» para mandarle el enlace directo (usted elige el contacto), o «Copiar enlace» para pegarlo donde quiera.',
         ],
         nota: 'No necesitan usuario ni contraseña. Los códigos dejan de funcionar al pulsar «Finalizar competencia». Si quita el código de un juez, se borran también sus votos.',
       },
@@ -310,7 +310,7 @@ export const GUIA: CategoriaGuia[] = [
         respuesta:
           'Por persona (por puesto), no por categoría. Cada puesto recibe un solo enlace: uno para la pre-pista, uno para la mesa técnica y uno para cada juez. Con ese enlace la persona ve todas las categorías de la competencia y escoge la que está en pista en la lista «Categoría» de su pantalla.',
         pasos: [
-          'Pre-pista: ve el número y el nombre de cada caballo y marca «Asistió» o «No asistió».',
+          'Pre-pista: ve el número y el nombre de cada caballo y marca «Participante confirmado» o «No asistió».',
           'Mesa técnica: ve todo, desde la asistencia y los votos de cada juez hasta quién pasa, las excusas y la hoja de cómputo.',
           'Cada juez: ve solo números, nunca nombres, y solo su propia libreta.',
         ],
@@ -338,22 +338,26 @@ export const GUIA: CategoriaGuia[] = [
       {
         pregunta: '¿Qué hace la pre-pista?',
         respuesta:
-          'Ve la lista de cada categoría con número y nombre, y marca «Asistió» o «No asistió». El que no asistió queda fuera: los jueces no lo pueden marcar ni votar.',
+          'Ve la lista de la categoría que está en pista con número y nombre, y marca «Participante confirmado» o «No asistió». El que no asistió queda fuera: los jueces no lo pueden marcar ni votar.',
       },
       {
         pregunta: '¿Qué hacen los jueces?',
         pasos: [
-          'Formato A: tocan los números que quieren ver en el recorrido individual. Pueden marcar varios.',
-          'Votación final: eligen el número para el 1.º, 2.º, 3.º, 4.º y 5.º lugar. Un número no se puede repetir.',
+          'Formato A: tocan los números que quieren ver en el recorrido individual, hasta 6. Al terminar pulsan «Finalizar votación» y ya no pueden cambiarlo.',
+          'Votación final: eligen el número para el 1.º, 2.º, 3.º, 4.º y 5.º lugar. Un número no se puede repetir. Al terminar pulsan «Finalizar votación».',
+          'Excusar: en «Excusar un ejemplar» cada juez elige el motivo (acto de indocilidad, fuera de la modalidad, lo pidió el exhibidor o situación sanitaria). Queda excusado cuando lo vota la mayoría: 2 de 3 o 3 de 5.',
         ],
         nota: 'Los jueces solo ven números, nunca nombres ni propietarios, y cada uno ve solo su propia libreta. Solo pueden votar cuando la mesa técnica abre ese paso.',
       },
       {
         pregunta: '¿Qué hace la mesa técnica?',
         pasos: [
-          'Cambia el paso de cada categoría en orden: Pre-pista → Formato A → Recorrido individual → Votación final → Cerrada. Si elige un paso que todavía no se puede abrir, la pantalla dice qué falta.',
-          'En el formato A ve cuántos jueces marcaron cada número y marca «Pasa» en los que van al recorrido individual. La lista aparece en grande para que el narrador la anuncie.',
-          'Excusa un ejemplar si hace falta, solo por estos motivos: acto de indocilidad, fuera de la modalidad, lo pidió el exhibidor o situación sanitaria. El excusado sale del recorrido y se borran sus votos.',
+          'Elige la categoría que sale a pista con «Sacar a pista». Nadie la puede cambiar hasta que la mesa la finalice.',
+          'Cambia el paso de la categoría en orden: Pre-pista → Formato A → Recorrido individual → Votación final → Cerrada. Si elige un paso que todavía no se puede abrir, la pantalla dice qué falta.',
+          'Ve qué jueces ya finalizaron. Si un juez se equivocó, pulse «Reabrir» para devolverle su votación.',
+          'En el formato A ve cuántos jueces marcaron cada número. Con «Pasar a todos los que marcó algún juez» pasan los marcados (según el reglamento basta con un juez); también puede marcar «Pasa» uno por uno. La lista aparece en grande para que el narrador la anuncie.',
+          'Ve los votos de excusa de cada juez. El excusado sale del recorrido y se borran sus votos.',
+          'Al terminar la votación final pulse «Finalizar categoría», luego «Imprimir acta (PDF)» para que firmen los jueces y la mesa técnica, y saque la siguiente categoría a pista.',
           'Ve las libretas de todos los jueces y la hoja de cómputo con el puesto de cada ejemplar. Gana la suma más baja.',
         ],
       },
@@ -407,7 +411,7 @@ export const GUIA: CategoriaGuia[] = [
       {
         pregunta: '3. ¿Cómo avanzo los pasos?',
         pasos: [
-          'En «Pasos», pulse «Ejecutar» en cada paso, en orden: numerar, pre-pista, formato A, la mesa escoge, votación y cierre. El sistema hace lo que haría cada puesto con su código.',
+          'En «Pasos», pulse «Ejecutar» en cada paso, en orden: numerar, sacar la categoría a pista, pre-pista, formato A, la mesa escoge, votación y finalizar. Del segundo al último se repiten con cada categoría. El sistema hace lo que haría cada puesto con su código.',
           'Después de cada paso, mire cómo cambian las pantallas.',
           'Si prefiere hacerlo a mano, use los celulares con los códigos: el ensayo también lo registra.',
           'Para verlo todo de una vez, pulse «Simular la competencia completa».',

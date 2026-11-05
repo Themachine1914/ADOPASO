@@ -267,6 +267,8 @@ export interface Sugerencia {
   categoria: CategoriaCatalogo
   /** true si además coincide con la modalidad del registro */
   recomendada: boolean
+  /** true si es de la misma modalidad del último grupo en que compitió */
+  ultimoGrupo: boolean
 }
 
 /** Categorías que le corresponden por sexo y edad cumplida el día de la competencia. */
@@ -274,6 +276,7 @@ export function categoriasDelCaballo(
   caballo: CaballoInscribible,
   fechaCompetencia: string,
   catalogo: CategoriaCatalogo[],
+  modalidadUltima: Modalidad | null = null,
 ): { meses: number | null; sugerencias: Sugerencia[] } {
   const meses = mesesCumplidos(caballo.nacimiento, fechaCompetencia)
   const sexo = sexoRegistro(caballo.sexo)
@@ -284,8 +287,14 @@ export function categoriasDelCaballo(
     .map((categoria) => ({
       categoria,
       recomendada: !permitidas || (categoria.modalidad != null && permitidas.includes(categoria.modalidad)),
+      ultimoGrupo: modalidadUltima != null && categoria.modalidad === modalidadUltima,
     }))
-    .sort((a, b) => Number(b.recomendada) - Number(a.recomendada) || a.categoria.codigo - b.categoria.codigo)
+    .sort(
+      (a, b) =>
+        Number(b.ultimoGrupo) - Number(a.ultimoGrupo) ||
+        Number(b.recomendada) - Number(a.recomendada) ||
+        a.categoria.codigo - b.categoria.codigo,
+    )
   return { meses, sugerencias }
 }
 
@@ -395,6 +404,60 @@ export async function cambiarMontador(inscripcionId: string, montador: string | 
   if (error) throw error
 }
 
+/**
+ * Cambia la inscripción de categoría sin borrarla. Queda sin número hasta volver a numerar;
+ * si la categoría anterior se queda vacía, la base la borra sola.
+ */
+export async function moverInscripcion(
+  competenciaId: string,
+  inscripcionId: string,
+  categoria: CategoriaCatalogo,
+  nombreCaballo: string,
+): Promise<void> {
+  const claseId = await claseDeCategoria(competenciaId, categoria)
+  const { error } = await supabase
+    .from('juzgamiento_ejemplares')
+    .update({ juzgamiento_id: claseId, numero: null, asistio: null, escogido: false })
+    .eq('id', inscripcionId)
+  if (error?.code === '23505') throw new Error(`${nombreCaballo} ya está inscrito en ${categoria.nombre}.`)
+  if (error) throw error
+}
+
+/** Último grupo (categoría) en que compitió el caballo, según los resultados guardados. */
+export interface UltimoGrupo {
+  categoria: string
+  fecha: string
+  modalidad: Modalidad | null
+}
+
+export async function ultimoGrupo(caballoCodigo: string): Promise<UltimoGrupo | null> {
+  const { data, error } = await supabase
+    .from('participaciones')
+    .select('fecha, categoria_nombre')
+    .eq('caballo_codigo', caballoCodigo)
+    .not('categoria_nombre', 'is', null)
+    .order('fecha', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  const categoria = String(data.categoria_nombre ?? '').replace(/\s+/g, ' ').trim()
+  return { categoria, fecha: fecha(data.fecha) ?? '', modalidad: modalidadDeClase(categoria, null) }
+}
+
+/** Montador que ya monta a otro caballo en esa categoría (el mismo no puede montar dos a la vez). */
+export function montadorRepetido(
+  clases: ClaseCompetencia[],
+  eventoCodigo: number,
+  montador: string | null,
+  excepto?: string,
+): Inscripcion | null {
+  const nombre = montador?.trim().toUpperCase()
+  if (!nombre) return null
+  const clase = clases.find((c) => c.eventoCodigo === eventoCodigo)
+  return clase?.inscritos.find((i) => i.id !== excepto && i.montador?.trim().toUpperCase() === nombre) ?? null
+}
+
 export async function quitarInscripcion(inscripcionId: string): Promise<void> {
   const { error } = await supabase.from('juzgamiento_ejemplares').delete().eq('id', inscripcionId)
   if (error) throw error
@@ -494,6 +557,18 @@ export function enlaceAcceso(codigo: string): string {
   return `${window.location.origin}/pista/${codigo}`
 }
 
+/** Enlace para mandar el acceso por WhatsApp; la persona elige el contacto en su teléfono. */
+export function enlaceWhatsApp(acceso: Acceso, competencia: string): string {
+  const puesto = etiquetaAcceso(acceso.rol, acceso.juezPuesto)
+  const texto = [
+    `ADOPASO · ${competencia}`,
+    `Acceso de ${puesto}${acceso.nombre ? ` (${acceso.nombre})` : ''}.`,
+    `Abra este enlace en su celular: ${enlaceAcceso(acceso.codigo)}`,
+    `Código: ${acceso.codigo}`,
+  ].join('\n')
+  return `https://wa.me/?text=${encodeURIComponent(texto)}`
+}
+
 // ---------------------------------------------------------------------------
 // Pista: lo que ven jueces, pre-pista y mesa técnica con su código
 // ---------------------------------------------------------------------------
@@ -522,6 +597,20 @@ export interface ClasePista {
   ejemplares: EjemplarPista[]
   formatoA: Array<{ juezPuesto: number; numero: number }>
   votos: Array<{ juezPuesto: number; lugar: string; numero: number }>
+  excusasVotos: Array<{ juezPuesto: number; numero: number; motivo: Excusa }>
+  finalizados: Array<{ juezPuesto: number; fase: 'formato_a' | 'votacion' }>
+}
+
+/** Máximo de ejemplares que cada juez marca en el formato A. */
+export const MAXIMO_FORMATO_A = 6
+
+/** Jueces que hacen falta para excusar: más de la mitad (2 de 3, 3 de 5). */
+export function mayoriaJueces(jueces: number): number {
+  return Math.floor(jueces / 2) + 1
+}
+
+export function juezFinalizo(clase: ClasePista, puesto: number, fase: 'formato_a' | 'votacion'): boolean {
+  return clase.finalizados.some((f) => f.juezPuesto === puesto && f.fase === fase)
 }
 
 const ORDEN_FASE: Fase[] = ['inscripcion', 'prepista', 'formato_a', 'individual', 'votacion', 'cerrada']
@@ -555,8 +644,8 @@ export function faltantesParaFase(clase: ClasePista, jueces: number[], destino: 
   if (hasta >= ORDEN_FASE.indexOf('individual')) {
     if (jueces.length === 0) faltan.push('La competencia no tiene jueces con código.')
     for (const puesto of jueces) {
-      if (!clase.formatoA.some((marca) => marca.juezPuesto === puesto)) {
-        faltan.push(`El juez ${puesto} no ha marcado el formato A.`)
+      if (!juezFinalizo(clase, puesto, 'formato_a')) {
+        faltan.push(`El juez ${puesto} no ha finalizado su formato A.`)
       }
     }
     for (const item of lista) {
@@ -593,6 +682,8 @@ export function faltantesParaFase(clase: ClasePista, jueces: number[], destino: 
       const sinVotar = LUGARES_PUESTO.slice(0, lugares).filter((lugar) => !votados.has(lugar))
       if (sinVotar.length > 0) {
         faltan.push(`Al juez ${puesto} le falta votar ${sinVotar.map((lugar) => `${lugar}.º`).join(', ')}.`)
+      } else if (!juezFinalizo(clase, puesto, 'votacion')) {
+        faltan.push(`El juez ${puesto} no ha finalizado su votación final.`)
       }
     }
   }
@@ -606,6 +697,8 @@ export interface EstadoPista {
   nombre: string | null
   competencia: { id: string; nombre: string; fecha: string; lugar: string | null; estado: string; simulacion: boolean }
   jueces: Array<{ puesto: number; nombre: string | null }>
+  /** Categoría que la mesa técnica tiene en pista. */
+  claseActiva: string | null
   clases: ClasePista[]
 }
 
@@ -620,7 +713,17 @@ export function limpiarCodigo(codigo: string): string {
 export async function estadoPista(codigo: string): Promise<EstadoPista> {
   const { data, error } = await supabase.rpc('acceso_estado', { p_codigo: codigo })
   if (error) throw mensaje(error)
-  return data as EstadoPista
+  const estado = data as EstadoPista
+  // Por si la base todavía no trae los campos nuevos.
+  return {
+    ...estado,
+    claseActiva: estado.claseActiva ?? null,
+    clases: estado.clases.map((clase) => ({
+      ...clase,
+      excusasVotos: clase.excusasVotos ?? [],
+      finalizados: clase.finalizados ?? [],
+    })),
+  }
 }
 
 export async function pistaAsistencia(codigo: string, ejemplarId: string, asistio: boolean | null): Promise<void> {
@@ -661,12 +764,28 @@ export async function pistaEscoger(codigo: string, ejemplarId: string, escogido:
   if (error) throw mensaje(error)
 }
 
-export async function pistaExcusar(codigo: string, ejemplarId: string, excusa: Excusa | null): Promise<void> {
-  const { error } = await supabase.rpc('acceso_excusar', {
+export async function pistaExcusaVoto(codigo: string, claseId: string, numero: number, motivo: Excusa | null): Promise<void> {
+  const { error } = await supabase.rpc('acceso_excusa_voto', {
     p_codigo: codigo,
-    p_ejemplar: ejemplarId,
-    p_excusa: excusa ?? '',
+    p_clase: claseId,
+    p_numero: numero,
+    p_motivo: motivo ?? '',
   })
+  if (error) throw mensaje(error)
+}
+
+export async function pistaFinalizarVotacion(codigo: string, claseId: string): Promise<void> {
+  const { error } = await supabase.rpc('acceso_finalizar_votacion', { p_codigo: codigo, p_clase: claseId })
+  if (error) throw mensaje(error)
+}
+
+export async function pistaReabrirVotacion(codigo: string, claseId: string, juezPuesto: number): Promise<void> {
+  const { error } = await supabase.rpc('acceso_reabrir_votacion', { p_codigo: codigo, p_clase: claseId, p_juez: juezPuesto })
+  if (error) throw mensaje(error)
+}
+
+export async function pistaElegirClase(codigo: string, claseId: string): Promise<void> {
+  const { error } = await supabase.rpc('acceso_elegir_clase', { p_codigo: codigo, p_clase: claseId })
   if (error) throw mensaje(error)
 }
 

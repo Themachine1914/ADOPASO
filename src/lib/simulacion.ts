@@ -9,9 +9,12 @@ import {
   listarCatalogoCategorias,
   mapCaballo,
   numerarCompetencia,
+  MAXIMO_FORMATO_A,
   pistaAsistencia,
+  pistaElegirClase,
   pistaEscoger,
   pistaFase,
+  pistaFinalizarVotacion,
   pistaFormatoA,
   pistaVotar,
   type Acceso,
@@ -134,17 +137,43 @@ function numerosEnPista(clase: ClasePista): number[] {
     .map((e) => e.numero!)
 }
 
-async function abrirFase(mesa: string, estado: EstadoPista, fase: Fase): Promise<void> {
-  for (const clase of estado.clases) {
-    if (clase.fase !== 'inscripcion' && clase.fase !== fase) await pistaFase(mesa, clase.id, fase)
-  }
+/** La categoría que la mesa técnica tiene en pista (sin finalizar). */
+function enCurso(estado: EstadoPista): ClasePista | null {
+  const clase = estado.clases.find((c) => c.id === estado.claseActiva)
+  return clase && clase.fase !== 'cerrada' ? clase : null
+}
+
+async function claseEnCurso(mesa: string): Promise<ClasePista> {
+  const clase = enCurso(await estadoPista(mesa))
+  if (!clase) throw new Error('No hay ninguna categoría en pista. Ejecute primero «Mesa técnica saca la siguiente categoría».')
+  return clase
+}
+
+async function abrirFase(mesa: string, fase: Fase): Promise<ClasePista> {
+  const clase = await claseEnCurso(mesa)
+  if (clase.fase !== fase) await pistaFase(mesa, clase.id, fase)
+  return clase
+}
+
+/** Lo que ve un juez de la categoría en pista. */
+async function claseDelJuez(codigo: string, claseId: string): Promise<ClasePista> {
+  const clase = (await estadoPista(codigo)).clases.find((c) => c.id === claseId)
+  if (!clase) throw new Error('El juez no ve la categoría en pista.')
+  return clase
 }
 
 export interface PasoSimulado {
   id: string
   titulo: string
   quien: string
+  /** Se repite con cada categoría, una detrás de otra. */
+  porCategoria: boolean
   ejecutar: (detalle: DetalleCompetencia) => Promise<void>
+}
+
+/** Categorías que todavía no se han finalizado. */
+export function quedanCategorias(mesa: EstadoPista): boolean {
+  return mesa.clases.some((c) => c.fase !== 'inscripcion' && c.fase !== 'cerrada')
 }
 
 export const PASOS: PasoSimulado[] = [
@@ -152,99 +181,114 @@ export const PASOS: PasoSimulado[] = [
     id: 'numerar',
     titulo: 'Cerrar inscripción y numerar',
     quien: 'Administración',
+    porCategoria: false,
     ejecutar: (detalle) => numerarCompetencia(detalle.competencia.id),
   },
   {
+    id: 'elegir',
+    titulo: 'Mesa técnica saca la siguiente categoría a pista',
+    quien: 'Mesa técnica',
+    porCategoria: true,
+    ejecutar: async (detalle) => {
+      const mesa = exigir(codigosDe(detalle).mesa, 'mesa técnica')
+      const estado = await estadoPista(mesa)
+      if (enCurso(estado)) return
+      const siguiente = estado.clases.find((c) => c.fase !== 'inscripcion' && c.fase !== 'cerrada')
+      if (!siguiente) throw new Error('No quedan categorías por juzgar.')
+      await pistaElegirClase(mesa, siguiente.id)
+    },
+  },
+  {
     id: 'prepista',
-    titulo: 'Pre-pista confirma asistencia',
+    titulo: 'Pre-pista confirma los participantes',
     quien: 'Pre-pista',
+    porCategoria: true,
     ejecutar: async (detalle) => {
       const codigos = codigosDe(detalle)
       const mesa = exigir(codigos.mesa, 'mesa técnica')
       const prepista = exigir(codigos.prepista, 'pre-pista')
-      await abrirFase(mesa, await estadoPista(mesa), 'prepista')
-      const estado = await estadoPista(prepista)
-      for (const clase of estado.clases) {
-        // Uno de cada categoría no se presenta, para ver que queda fuera.
-        const ausente = azar(clase.ejemplares.filter((e) => e.numero != null))[0]?.id
-        for (const ejemplar of clase.ejemplares) {
-          if (ejemplar.numero == null || !ejemplar.id) continue
-          await pistaAsistencia(prepista, ejemplar.id, ejemplar.id !== ausente)
-        }
+      const { id } = await abrirFase(mesa, 'prepista')
+      const clase = (await estadoPista(prepista)).clases.find((c) => c.id === id)!
+      // Uno de cada categoría no se presenta, para ver que queda fuera.
+      const ausente = azar(clase.ejemplares.filter((e) => e.numero != null))[0]?.id
+      for (const ejemplar of clase.ejemplares) {
+        if (ejemplar.numero == null || !ejemplar.id) continue
+        await pistaAsistencia(prepista, ejemplar.id, ejemplar.id !== ausente)
       }
     },
   },
   {
     id: 'formato_a',
-    titulo: 'Jueces marcan el formato A',
+    titulo: 'Jueces marcan el formato A y lo finalizan',
     quien: 'Jueces',
+    porCategoria: true,
     ejecutar: async (detalle) => {
       const codigos = codigosDe(detalle)
       const mesa = exigir(codigos.mesa, 'mesa técnica')
-      await abrirFase(mesa, await estadoPista(mesa), 'formato_a')
+      const { id } = await abrirFase(mesa, 'formato_a')
       for (const juez of codigos.jueces) {
-        const estado = await estadoPista(juez.codigo)
-        for (const clase of estado.clases) {
-          const numeros = numerosEnPista(clase)
-          const cuantos = Math.max(2, Math.ceil(numeros.length * 0.6))
-          for (const numero of azar(numeros).slice(0, cuantos)) {
-            await pistaFormatoA(juez.codigo, clase.id, numero, true)
-          }
+        const clase = await claseDelJuez(juez.codigo, id)
+        if (clase.finalizados.some((f) => f.fase === 'formato_a')) continue
+        const numeros = numerosEnPista(clase)
+        const cuantos = Math.min(MAXIMO_FORMATO_A, Math.max(2, Math.ceil(numeros.length * 0.6)))
+        const ya = new Set(clase.formatoA.map((m) => m.numero))
+        for (const numero of azar(numeros).slice(0, cuantos - ya.size)) {
+          if (!ya.has(numero)) await pistaFormatoA(juez.codigo, id, numero, true)
         }
+        await pistaFinalizarVotacion(juez.codigo, id)
       }
     },
   },
   {
     id: 'escoger',
-    titulo: 'Mesa técnica escoge el recorrido individual',
+    titulo: 'Mesa técnica anuncia quién pasa al recorrido individual',
     quien: 'Mesa técnica',
+    porCategoria: true,
     ejecutar: async (detalle) => {
       const mesa = exigir(codigosDe(detalle).mesa, 'mesa técnica')
-      const estado = await estadoPista(mesa)
-      const jueces = Math.max(1, estado.jueces.length)
-      for (const clase of estado.clases) {
-        // Pasa el que marcó la mayoría de los jueces.
-        for (const ejemplar of clase.ejemplares) {
-          if (!ejemplar.id || ejemplar.numero == null || ejemplar.asistio === false || ejemplar.excusa) continue
-          const votos = clase.formatoA.filter((m) => m.numero === ejemplar.numero).length
-          const pasa = votos * 2 > jueces
-          if (pasa !== ejemplar.escogido) await pistaEscoger(mesa, ejemplar.id, pasa)
-        }
+      const clase = await claseEnCurso(mesa)
+      // Reglamento: basta con que un juez lo marque en su formato A.
+      for (const ejemplar of clase.ejemplares) {
+        if (!ejemplar.id || ejemplar.numero == null || ejemplar.asistio === false || ejemplar.excusa) continue
+        const pasa = clase.formatoA.some((m) => m.numero === ejemplar.numero)
+        if (pasa !== ejemplar.escogido) await pistaEscoger(mesa, ejemplar.id, pasa)
       }
-      await abrirFase(mesa, await estadoPista(mesa), 'individual')
+      await abrirFase(mesa, 'individual')
     },
   },
   {
     id: 'votacion',
-    titulo: 'Jueces votan los lugares',
+    titulo: 'Jueces votan los lugares y finalizan',
     quien: 'Jueces',
+    porCategoria: true,
     ejecutar: async (detalle) => {
       const codigos = codigosDe(detalle)
       const mesa = exigir(codigos.mesa, 'mesa técnica')
-      await abrirFase(mesa, await estadoPista(mesa), 'votacion')
+      const { id } = await abrirFase(mesa, 'votacion')
       for (const juez of codigos.jueces) {
-        const estado = await estadoPista(juez.codigo)
-        for (const clase of estado.clases) {
-          const escogidos = clase.ejemplares.filter((e) => e.escogido && !e.excusa && e.numero != null).map((e) => e.numero!)
-          // Todos los jueces parten del mismo orden y cambian un par de lugares, como en la pista.
-          const orden = [...escogidos].sort((a, b) => a - b)
-          const i = Math.floor(Math.random() * Math.max(1, orden.length - 1))
-          if (orden.length > 1) [orden[i], orden[i + 1]] = [orden[i + 1], orden[i]]
-          for (const [indice, lugar] of LUGARES_PUESTO.entries()) {
-            const numero = orden[indice]
-            if (numero != null) await pistaVotar(juez.codigo, clase.id, lugar, numero)
-          }
+        const clase = await claseDelJuez(juez.codigo, id)
+        if (clase.finalizados.some((f) => f.fase === 'votacion')) continue
+        const escogidos = clase.ejemplares.filter((e) => e.escogido && !e.excusa && e.numero != null).map((e) => e.numero!)
+        // Todos los jueces parten del mismo orden y cambian un par de lugares, como en la pista.
+        const orden = [...escogidos].sort((a, b) => a - b)
+        const i = Math.floor(Math.random() * Math.max(1, orden.length - 1))
+        if (orden.length > 1) [orden[i], orden[i + 1]] = [orden[i + 1], orden[i]]
+        for (const [indice, lugar] of LUGARES_PUESTO.entries()) {
+          const numero = orden[indice]
+          if (numero != null) await pistaVotar(juez.codigo, id, lugar, numero)
         }
+        await pistaFinalizarVotacion(juez.codigo, id)
       }
     },
   },
   {
     id: 'cerrar',
-    titulo: 'Mesa técnica cierra las clases',
+    titulo: 'Mesa técnica finaliza la categoría',
     quien: 'Mesa técnica',
+    porCategoria: true,
     ejecutar: async (detalle) => {
       const mesa = exigir(codigosDe(detalle).mesa, 'mesa técnica')
-      await abrirFase(mesa, await estadoPista(mesa), 'cerrada')
+      await abrirFase(mesa, 'cerrada')
     },
   },
 ]
@@ -448,6 +492,12 @@ export async function probarAccesos(detalle: DetalleCompetencia): Promise<Revisi
 
     const clase = estado.clases.find((c) => c.fase !== 'inscripcion')
     if (clase) {
+      agregar(
+        'El juez no cambia la categoría en pista',
+        await debeFallar(() => pistaElegirClase(juez.codigo, clase.id)),
+        'Solo la mesa técnica saca una categoría a pista.',
+        'Un juez pudo cambiar la categoría en pista.',
+      )
       agregar(
         'El juez no escoge ni cambia la fase',
         (await debeFallar(() => pistaFase(juez.codigo, clase.id, clase.fase))) &&

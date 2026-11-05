@@ -12,17 +12,24 @@ import {
   crearAcceso,
   eliminarCompetencia,
   enlaceAcceso,
+  enlaceWhatsApp,
   etiquetaAcceso,
   etiquetaFase,
   finalizarCompetencia,
   inscribir,
   listarCatalogoCategorias,
   marcarPagado,
+  montadorRepetido,
+  moverInscripcion,
   numerarCompetencia,
   quitarInscripcion,
+  ultimoGrupo,
   type CaballoInscribible,
   type CategoriaCatalogo,
+  type ClaseCompetencia,
   type DetalleCompetencia,
+  type Inscripcion as InscripcionCompetencia,
+  type UltimoGrupo,
 } from '../../lib/competencia'
 import { formatFechaEmision, formatNombre } from '../../lib/format'
 import { listarJueces, type JuezCatalogo } from '../../lib/juzgamiento'
@@ -41,6 +48,7 @@ export function AdminCompetencia() {
   const [jueces, setJueces] = useState<JuezCatalogo[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editando, setEditando] = useState<string | null>(null)
 
   async function recargar() {
     setDetalle(await cargarCompetencia(id))
@@ -117,6 +125,7 @@ export function AdminCompetencia() {
         <Inscripcion
           fecha={competencia.fecha}
           catalogo={catalogo}
+          clases={clases}
           onInscribir={(categoria, caballo, pagado, montador) =>
             hacer(() => inscribir(competencia.id, categoria, caballo, pagado, montador))
           }
@@ -185,15 +194,8 @@ export function AdminCompetencia() {
                           </span>
                         </td>
                         <td className="hidden px-4 py-2 sm:table-cell">{formatNombre(item.propietario)}</td>
-                        <td className="min-w-[12rem] px-4 py-2">
-                          {clase.fase === 'inscripcion' || clase.fase === 'prepista' ? (
-                            <SelectorBusqueda
-                              busca={MONTADORES}
-                              valor={item.montador ?? ''}
-                              etiqueta={formatNombre(item.montador)}
-                              onElegir={(opcion) => void hacer(() => cambiarMontador(item.id, opcion?.valor ?? null))}
-                            />
-                          ) : item.montador ? (
+                        <td className="px-4 py-2">
+                          {item.montador ? (
                             formatNombre(item.montador)
                           ) : (
                             <span className="text-flag-red">Sin montador</span>
@@ -208,7 +210,16 @@ export function AdminCompetencia() {
                             onChange={(e) => void hacer(() => marcarPagado(item.id, e.target.checked))}
                           />
                         </td>
-                        <td className="px-4 py-2 text-right">
+                        <td className="whitespace-nowrap px-4 py-2 text-right">
+                          {!finalizada ? (
+                            <button
+                              type="button"
+                              className="typo-meta mr-3 underline"
+                              onClick={() => setEditando(editando === item.id ? null : item.id)}
+                            >
+                              Editar
+                            </button>
+                          ) : null}
                           {clase.fase === 'inscripcion' || clase.fase === 'prepista' ? (
                             <button
                               type="button"
@@ -224,7 +235,35 @@ export function AdminCompetencia() {
                           ) : null}
                         </td>
                       </tr>
-                    ))}
+                    )).flatMap((fila, indice) => {
+                      const item = clase.inscritos[indice]
+                      if (editando !== item.id) return [fila]
+                      return [
+                        fila,
+                        <tr key={`${item.id}-editar`}>
+                          <td colSpan={6} className="bg-bg/40 px-4 py-4">
+                            <EditarInscripcion
+                              item={item}
+                              clase={clase}
+                              clases={clases}
+                              fecha={competencia.fecha}
+                              catalogo={catalogo}
+                              onCancelar={() => setEditando(null)}
+                              onGuardar={async (cambio) => {
+                                await hacer(async () => {
+                                  if (cambio.categoria) {
+                                    await moverInscripcion(competencia.id, item.id, cambio.categoria, item.nombre)
+                                  }
+                                  if (cambio.montador !== item.montador) await cambiarMontador(item.id, cambio.montador)
+                                  if (cambio.pagado !== item.pagado) await marcarPagado(item.id, cambio.pagado)
+                                })
+                                setEditando(null)
+                              }}
+                            />
+                          </td>
+                        </tr>,
+                      ]
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -280,10 +319,12 @@ export function AdminCompetencia() {
 function Inscripcion({
   fecha,
   catalogo,
+  clases,
   onInscribir,
 }: {
   fecha: string
   catalogo: CategoriaCatalogo[]
+  clases: ClaseCompetencia[]
   onInscribir: (
     categoria: CategoriaCatalogo,
     caballo: CaballoInscribible,
@@ -298,6 +339,22 @@ function Inscripcion({
   const [verTodas, setVerTodas] = useState(false)
   const [montador, setMontador] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
+  const [ultimo, setUltimo] = useState<UltimoGrupo | null>(null)
+
+  // Último grupo en que compitió: se sugiere esa modalidad con la categoría de su edad de hoy.
+  useEffect(() => {
+    setUltimo(null)
+    if (!caballo) return
+    let vigente = true
+    ultimoGrupo(caballo.codigo)
+      .then((grupo) => {
+        if (vigente) setUltimo(grupo)
+      })
+      .catch(() => undefined)
+    return () => {
+      vigente = false
+    }
+  }, [caballo])
 
   useEffect(() => {
     let vigente = true
@@ -317,8 +374,11 @@ function Inscripcion({
   }, [busqueda])
 
   const { meses, sugerencias } = useMemo(
-    () => (caballo ? categoriasDelCaballo(caballo, fecha, catalogo) : { meses: null, sugerencias: [] }),
-    [caballo, fecha, catalogo],
+    () =>
+      caballo
+        ? categoriasDelCaballo(caballo, fecha, catalogo, ultimo?.modalidad ?? null)
+        : { meses: null, sugerencias: [] },
+    [caballo, fecha, catalogo, ultimo],
   )
   const recomendadas = sugerencias.filter((s) => s.recomendada)
   const visibles = verTodas || recomendadas.length === 0 ? sugerencias : recomendadas
@@ -374,6 +434,12 @@ function Inscripcion({
             {caballo.modalidad ? ` · ${caballo.modalidad}` : ''}
             {meses != null ? ` · ${meses} meses el día de la competencia` : ''}
           </p>
+          {ultimo ? (
+            <p className="typo-meta mt-1">
+              Último grupo en que compitió: {ultimo.categoria}
+              {ultimo.fecha ? ` (${formatFechaEmision(ultimo.fecha)})` : ''}.
+            </p>
+          ) : null}
 
           {meses == null ? (
             <p className="typo-meta mt-3 text-flag-red">
@@ -398,13 +464,14 @@ function Inscripcion({
               </label>
               <p className="typo-label mt-4">Categoría</p>
               <ul className="mt-2 space-y-2">
-                {visibles.map(({ categoria, recomendada }) => (
+                {visibles.map(({ categoria, recomendada, ultimoGrupo: delUltimo }, indice) => (
                   <li
                     key={categoria.codigo}
                     className="flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-border px-3 py-2"
                   >
                     <span className="text-sm">
                       {categoria.nombre}
+                      {delUltimo && indice === 0 ? <span className="typo-caption ml-2 text-gold">Sugerida</span> : null}
                       {!recomendada ? <span className="typo-meta"> · otra modalidad</span> : null}
                     </span>
                     <button
@@ -412,6 +479,15 @@ function Inscripcion({
                       className="typo-btn rounded-[10px] bg-gold px-3 py-1.5 text-bg"
                       onClick={async () => {
                         setAviso(null)
+                        const otro = montadorRepetido(clases, categoria.codigo, montador)
+                        if (
+                          otro &&
+                          !window.confirm(
+                            `${formatNombre(montador)} ya monta a ${formatNombre(otro.nombre)} en ${categoria.nombre}. Un montador no puede llevar dos caballos en la misma categoría. ¿Inscribir de todas formas?`,
+                          )
+                        ) {
+                          return
+                        }
                         try {
                           await onInscribir(categoria, caballo, pagado, montador)
                           setAviso(`${formatNombre(caballo.nombre)} quedó inscrito en ${categoria.nombre}.`)
@@ -509,6 +585,12 @@ function Accesos({
         ) : null}
       </div>
 
+      {accesos.filter((a) => a.rol === 'juez').length % 2 === 0 && accesos.some((a) => a.rol === 'juez') ? (
+        <p className="typo-meta mt-3 text-flag-red">
+          Hay un número par de jueces. Para excusar hace falta la mayoría, así que conviene que sean 3 o 5.
+        </p>
+      ) : null}
+
       {accesos.length > 0 ? (
         <ul className="mt-4 divide-y divide-border overflow-hidden rounded-[12px] border border-border">
           {accesos.map((acceso) => (
@@ -528,6 +610,14 @@ function Accesos({
                 >
                   Copiar enlace
                 </button>
+                <a
+                  href={enlaceWhatsApp(acceso, detalle.competencia.nombre)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="typo-meta font-medium text-gold underline"
+                >
+                  Enviar por WhatsApp
+                </a>
                 <button
                   type="button"
                   className="typo-meta text-muted underline"
@@ -546,5 +636,116 @@ function Accesos({
         </ul>
       ) : null}
     </section>
+  )
+}
+
+function EditarInscripcion({
+  item,
+  clase,
+  clases,
+  fecha,
+  catalogo,
+  onCancelar,
+  onGuardar,
+}: {
+  item: InscripcionCompetencia
+  clase: ClaseCompetencia
+  clases: ClaseCompetencia[]
+  fecha: string
+  catalogo: CategoriaCatalogo[]
+  onCancelar: () => void
+  onGuardar: (cambio: { categoria: CategoriaCatalogo | null; montador: string | null; pagado: boolean }) => Promise<void>
+}) {
+  const [codigo, setCodigo] = useState(String(clase.eventoCodigo ?? ''))
+  const [montador, setMontador] = useState<string | null>(item.montador)
+  const [pagado, setPagado] = useState(item.pagado)
+  const [guardando, setGuardando] = useState(false)
+  // Antes de la votación se puede cambiar de categoría; después, solo montador y pago.
+  const mueve = clase.fase === 'inscripcion' || clase.fase === 'prepista'
+  const opciones = useMemo(() => {
+    const caballo: CaballoInscribible = {
+      codigo: item.caballoCodigo ?? '',
+      nombre: item.nombre,
+      sexo: item.sexo,
+      nacimiento: item.nacimiento,
+      modalidad: '',
+      padre: null,
+      madre: null,
+      criador: null,
+      propietario: item.propietario,
+    }
+    const propias = categoriasDelCaballo(caballo, fecha, catalogo).sugerencias.map((s) => s.categoria)
+    const actual = catalogo.find((c) => c.codigo === clase.eventoCodigo)
+    return actual && !propias.some((c) => c.codigo === actual.codigo) ? [actual, ...propias] : propias
+  }, [item, fecha, catalogo, clase.eventoCodigo])
+  const destino = opciones.find((c) => String(c.codigo) === codigo) ?? null
+  const cambiaCategoria = destino != null && destino.codigo !== clase.eventoCodigo
+
+  return (
+    <div className="space-y-4">
+      <p className="typo-name text-sm">Editar a {formatNombre(item.nombre)}</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="typo-label">Categoría</span>
+          <select
+            value={codigo}
+            disabled={!mueve}
+            onChange={(e) => setCodigo(e.target.value)}
+            className="mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-2 text-ink disabled:opacity-60"
+          >
+            {opciones.map((c) => (
+              <option key={c.codigo} value={c.codigo}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
+          {!mueve ? (
+            <span className="typo-meta mt-1 block">La categoría ya está en juzgamiento; no se puede cambiar.</span>
+          ) : cambiaCategoria ? (
+            <span className="typo-meta mt-1 block">Queda sin número: vuelva a numerar después de guardar.</span>
+          ) : null}
+        </label>
+        <div>
+          <span className="typo-label">Montador</span>
+          <SelectorBusqueda
+            busca={MONTADORES}
+            valor={montador ?? ''}
+            etiqueta={formatNombre(montador)}
+            onElegir={(opcion) => setMontador(opcion?.valor ?? null)}
+          />
+        </div>
+      </div>
+      <label className="typo-meta flex items-center gap-2">
+        <input type="checkbox" checked={pagado} onChange={(e) => setPagado(e.target.checked)} />
+        Pagó la inscripción
+      </label>
+      <div className="flex gap-3">
+        <button
+          type="button"
+          disabled={guardando}
+          className="typo-btn rounded-[10px] bg-gold px-4 py-2 text-bg disabled:opacity-60"
+          onClick={async () => {
+            const evento = destino?.codigo ?? clase.eventoCodigo ?? 0
+            const otro = montadorRepetido(clases, evento, montador, item.id)
+            if (
+              otro &&
+              !window.confirm(
+                `${formatNombre(montador)} ya monta a ${formatNombre(otro.nombre)} en esa categoría. Un montador no puede llevar dos caballos en la misma categoría. ¿Guardar de todas formas?`,
+              )
+            ) {
+              return
+            }
+            setGuardando(true)
+            await onGuardar({ categoria: cambiaCategoria ? destino : null, montador, pagado })
+            setGuardando(false)
+          }}
+        >
+          Guardar cambios
+        </button>
+        <button type="button" className="typo-meta underline" onClick={onCancelar}>
+          Cancelar
+        </button>
+      </div>
+    </div>
   )
 }
