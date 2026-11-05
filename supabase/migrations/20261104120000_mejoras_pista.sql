@@ -83,6 +83,13 @@ begin
         excusa_fase = coalesce(e.excusa_fase, case when j.fase = 'formato_a' then 'formato_a' else 'final' end),
         escogido = false
     where id = e.id;
+    -- Los jueces que ya habían finalizado con ese número votado tienen que volver a votar ese lugar.
+    delete from public.juzgamiento_finalizados f
+    where f.juzgamiento_id = p_clase and f.fase = 'votacion'
+      and exists (
+        select 1 from public.juzgamiento_votos v
+        where v.juzgamiento_id = p_clase and v.juez_puesto = f.juez_puesto and v.ejemplar_numero = p_numero
+      );
     -- Un ejemplar excusado sale del formato A y de la votación final.
     delete from public.juzgamiento_formato_a where juzgamiento_id = p_clase and ejemplar_numero = p_numero;
     delete from public.juzgamiento_votos where juzgamiento_id = p_clase and ejemplar_numero = p_numero;
@@ -157,6 +164,33 @@ create trigger borrar_clase_vacia_al_quitar after delete on public.juzgamiento_e
 create trigger borrar_clase_vacia_al_mover after update of juzgamiento_id on public.juzgamiento_ejemplares
   for each row when (old.juzgamiento_id is distinct from new.juzgamiento_id)
   execute function public.borrar_clase_vacia();
+
+-- No se inscribe ni se mueve un caballo a una categoría que ya está en juzgamiento o finalizada:
+-- quedaría sin número y trabaría la numeración de toda la competencia.
+create or replace function public.inscribir_solo_antes_de_juzgar()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  j public.juzgamientos;
+begin
+  select * into j from public.juzgamientos where id = new.juzgamiento_id;
+  if j.competencia_id is not null and j.fase not in ('inscripcion', 'prepista') then
+    raise exception 'La categoría % ya está en juzgamiento; no se le pueden agregar caballos', j.categoria;
+  end if;
+  return new;
+end;
+$$;
+
+revoke execute on function public.inscribir_solo_antes_de_juzgar() from public, anon, authenticated;
+
+create trigger inscribir_solo_antes_de_juzgar before insert on public.juzgamiento_ejemplares
+  for each row execute function public.inscribir_solo_antes_de_juzgar();
+create trigger mover_solo_antes_de_juzgar before update of juzgamiento_id on public.juzgamiento_ejemplares
+  for each row when (old.juzgamiento_id is distinct from new.juzgamiento_id)
+  execute function public.inscribir_solo_antes_de_juzgar();
 
 -- Las categorías que ya quedaron vacías (por ejemplo, tras borrar una inscripción equivocada).
 delete from public.juzgamientos j

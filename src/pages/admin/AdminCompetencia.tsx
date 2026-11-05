@@ -674,10 +674,17 @@ function EditarInscripcion({
       criador: null,
       propietario: item.propietario,
     }
-    const propias = categoriasDelCaballo(caballo, fecha, catalogo).sugerencias.map((s) => s.categoria)
+    // Solo categorías que todavía no están en juzgamiento (o que aún no existen en la competencia).
+    const abierta = (codigoEvento: number) => {
+      const destino = clases.find((c) => c.eventoCodigo === codigoEvento)
+      return !destino || destino.fase === 'inscripcion' || destino.fase === 'prepista'
+    }
+    const propias = categoriasDelCaballo(caballo, fecha, catalogo)
+      .sugerencias.map((s) => s.categoria)
+      .filter((c) => abierta(c.codigo))
     const actual = catalogo.find((c) => c.codigo === clase.eventoCodigo)
     return actual && !propias.some((c) => c.codigo === actual.codigo) ? [actual, ...propias] : propias
-  }, [item, fecha, catalogo, clase.eventoCodigo])
+  }, [item, fecha, catalogo, clase.eventoCodigo, clases])
   const destino = opciones.find((c) => String(c.codigo) === codigo) ?? null
   const cambiaCategoria = destino != null && destino.codigo !== clase.eventoCodigo
 
