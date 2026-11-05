@@ -14,7 +14,7 @@ import {
   type EstadoPista,
 } from '../../lib/competencia'
 import { formatNombre } from '../../lib/format'
-import { codigosDe, PASOS, probarAccesos, revisarPasos, type Resultado, type Revision } from '../../lib/simulacion'
+import { codigosDe, PASOS, probarAccesos, quedanCategorias, revisarPasos, type Resultado, type Revision } from '../../lib/simulacion'
 
 const REFRESCO_MS = 5000
 
@@ -75,11 +75,18 @@ export function AdminSimulacion() {
     setOcupado('Simulación completa')
     setError(null)
     try {
-      for (const paso of PASOS) {
-        setOcupado(paso.titulo)
+      const correrPaso = async (paso: (typeof PASOS)[number], extra = '') => {
+        setOcupado(`${paso.titulo}${extra}`)
         const actual = await cargarCompetencia(id)
         if (!actual) throw new Error('La simulación ya no existe.')
         await paso.ejecutar(actual)
+      }
+      for (const paso of PASOS.filter((p) => !p.porCategoria)) await correrPaso(paso)
+      // Una categoría a la vez: la mesa técnica no puede sacar otra hasta finalizar la que está en pista.
+      const mesaCodigo = codigosDe((await cargarCompetencia(id))!).mesa
+      if (!mesaCodigo) throw new Error('Falta el código de mesa técnica.')
+      for (let vuelta = 1; vuelta <= 50 && quedanCategorias(await estadoPista(mesaCodigo)); vuelta += 1) {
+        for (const paso of PASOS.filter((p) => p.porCategoria)) await correrPaso(paso, ` (categoría ${vuelta})`)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'La simulación se detuvo.')
@@ -168,7 +175,10 @@ export function AdminSimulacion() {
                 <p className="typo-name text-sm">
                   {indice + 1}. {paso.titulo}
                 </p>
-                <p className="typo-meta">Lo hace: {paso.quien}</p>
+                <p className="typo-meta">
+                  Lo hace: {paso.quien}
+                  {paso.porCategoria ? ' · se repite con cada categoría' : ''}
+                </p>
               </div>
               <button
                 type="button"
