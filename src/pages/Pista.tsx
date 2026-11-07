@@ -256,6 +256,15 @@ function nombreJuez(estado: EstadoPista, puesto: number): string {
   return nombre ? `Juez ${puesto} · ${formatNombre(nombre)}` : `Juez ${puesto}`
 }
 
+function CheckConfirmado() {
+  return (
+    <svg className="h-5 w-5 shrink-0 text-gold" viewBox="0 0 24 24" fill="none" role="img" aria-label="Participante confirmado">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M7.5 12.2 10.6 15.3 16.5 8.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function Boton({
   activo,
   onClick,
@@ -303,18 +312,22 @@ function PrePista({ clase, codigo, hacer }: { clase: ClasePista; codigo: string;
             <div className="flex items-center gap-3">
               <span className="w-10 text-center font-display text-2xl font-semibold text-gold">{item.numero}</span>
               <div>
-                <span className="typo-name text-sm">{formatNombre(item.nombre)}</span>
-                {item.asistio === true ? <span className="typo-caption block text-gold">Participante confirmado</span> : null}
+                <span className="typo-name flex items-center gap-2 text-sm">
+                  {formatNombre(item.nombre)}
+                  {item.asistio === true ? <CheckConfirmado /> : null}
+                </span>
               </div>
             </div>
             <div className="flex gap-2">
-              <Boton
-                activo={item.asistio === true}
-                disabled={!abierta}
-                onClick={() => void hacer(() => pistaAsistencia(codigo, item.id!, item.asistio === true ? null : true))}
-              >
-                Participante confirmado
-              </Boton>
+              {item.asistio === true ? null : (
+                <Boton
+                  activo={false}
+                  disabled={!abierta}
+                  onClick={() => void hacer(() => pistaAsistencia(codigo, item.id!, true))}
+                >
+                  Confirmar participante
+                </Boton>
+              )}
               <Boton
                 activo={item.asistio === false}
                 disabled={!abierta}
