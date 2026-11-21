@@ -532,6 +532,13 @@ export async function deshacerSincronizacion(competenciaId: string): Promise<num
 
 /** Cierra la inscripción: numera cada categoría del más adulto (1) al más joven. */
 /** Cierra una sola categoría: la numera por edad y la pasa a pre-pista. A los inscritos tarde les da el siguiente número libre. */
+/** Fase actual de la categoría, leída de la base (la pantalla puede estar desactualizada). */
+export async function faseDeCategoria(claseId: string): Promise<Fase> {
+  const { data, error } = await supabase.from('juzgamientos').select('fase').eq('id', claseId).single()
+  if (error) throw error
+  return data.fase as Fase
+}
+
 export async function numerarCategoria(claseId: string): Promise<void> {
   const { error } = await supabase.rpc('numerar_categoria', { p_clase: claseId })
   if (error) throw error
