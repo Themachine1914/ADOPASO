@@ -608,10 +608,23 @@ export async function simularCategoria(detalle: DetalleCompetencia, claseId: str
     })
     await crearAcceso(id, { rol: 'mesa' })
     await crearAcceso(id, { rol: 'prepista' })
-    const jueces = detalle.accesos.filter((a) => a.rol === 'juez' && a.juezPuesto != null)
+    // Los mismos jueces de la real, con su código del catálogo de jueces.
+    const { data: reales, error: errorJueces } = await supabase
+      .from('competencia_accesos')
+      .select('juez_puesto, juez_codigo, nombre')
+      .eq('competencia_id', competencia.id)
+      .eq('rol', 'juez')
+      .order('juez_puesto')
+    if (errorJueces) throw errorJueces
+    const jueces = (reales ?? []).filter((j) => j.juez_puesto != null)
     if (jueces.length > 0) {
       for (const juez of jueces) {
-        await crearAcceso(id, { rol: 'juez', juezPuesto: juez.juezPuesto!, nombre: juez.nombre ?? undefined })
+        await crearAcceso(id, {
+          rol: 'juez',
+          juezPuesto: Number(juez.juez_puesto),
+          juezCodigo: juez.juez_codigo != null ? Number(juez.juez_codigo) : undefined,
+          nombre: juez.nombre ?? undefined,
+        })
       }
     } else {
       for (let puesto = 1; puesto <= JUECES_SIMULADOS; puesto += 1) {
