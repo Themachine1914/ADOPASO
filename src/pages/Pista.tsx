@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
+import { mesesCumplidos } from '../lib/campeonato'
 import { hojaDeComputo, juezMasCertero, LUGARES_PUESTO, SIN_VOTO } from '../lib/computo'
 import {
   EXCUSAS,
@@ -877,7 +878,7 @@ function Actas({ clases, onActa }: { clases: ClasePista[]; onActa: (id: string) 
 }
 
 /** Todos los datos del ejemplar, como en el «Formulario Dirección de Eventos». */
-function DatosEjemplar({ item }: { item: EjemplarPista }) {
+function DatosEjemplar({ item, fecha }: { item: EjemplarPista; fecha: string }) {
   const sexo = item.sexo === 'H' ? 'Hembra' : item.sexo === 'M' ? 'Macho' : null
   const linea = (partes: (string | null | undefined)[]) => partes.filter((p) => p && p.trim()).join(' · ')
   const fila = (etiqueta: string, valor: string | null | undefined) =>
@@ -886,22 +887,31 @@ function DatosEjemplar({ item }: { item: EjemplarPista }) {
         <span className="text-muted">{etiqueta}:</span> {valor}
       </span>
     ) : null
-  const registro = linea([item.registro, item.asociacion])
-  const nacimiento = linea([sexo, item.nacimiento ? `nació ${formatFechaEmision(item.nacimiento)}` : null])
-  const identificacion = linea([item.adn ? `ADN ${item.adn}` : null, item.microchip ? `Microchip ${item.microchip}` : null])
+  // Edad en meses el día de la competencia, la misma cuenta que usan las categorías.
+  const meses = mesesCumplidos(item.nacimiento, fecha)
+  const nacimiento = linea([
+    sexo,
+    item.nacimiento ? `nació ${formatFechaEmision(item.nacimiento)}` : null,
+    meses != null ? `${meses} meses` : null,
+  ])
+  const asociacion = linea([item.asociacion, item.adn ? `ADN ${item.adn}` : null])
+  const identificacion = linea([
+    item.registro ? `Registro ${item.registro}` : null,
+    item.microchip ? `Microchip ${item.microchip}` : null,
+  ])
   return (
     <div className="min-w-[16rem]">
       <span className="typo-name block text-sm">{formatNombre(item.nombre)}</span>
       <span className="typo-meta block">
-        {registro ? <span className="block">{registro}</span> : null}
         {nacimiento ? <span className="block">{nacimiento}</span> : null}
-        {identificacion ? <span className="block">{identificacion}</span> : null}
+        {asociacion ? <span className="block">{asociacion}</span> : null}
         {fila('Padre', item.padre ? formatNombre(item.padre) : null)}
         {fila('Madre', item.madre ? formatNombre(item.madre) : null)}
         {fila('Abuelo materno', item.abueloMaterno ? formatNombre(item.abueloMaterno) : null)}
         {fila('Criador', item.criador ? formatNombre(item.criador) : null)}
         {fila('Propietario', item.propietario ? formatNombre(item.propietario) : null)}
         {fila('Montador', item.montador ? formatNombre(item.montador) : 'Sin montador')}
+        {identificacion ? <span className="block">{identificacion}</span> : null}
       </span>
     </div>
   )
@@ -1170,7 +1180,7 @@ function Mesa({
                   <tr key={item.id} className={item.asistio === false || item.excusa ? 'opacity-50' : ''}>
                     <td className="px-3 py-2 font-display text-xl font-semibold text-gold">{item.numero}</td>
                     <td className="px-3 py-2">
-                      <DatosEjemplar item={item} />
+                      <DatosEjemplar item={item} fecha={estado.competencia.fecha} />
                     </td>
                     <td className="px-3 py-2">
                       {item.asistio === true ? 'Confirmado' : item.asistio === false ? 'No asistió' : '—'}
