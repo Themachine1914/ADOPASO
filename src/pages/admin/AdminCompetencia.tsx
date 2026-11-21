@@ -34,7 +34,7 @@ import {
 } from '../../lib/competencia'
 import { formatFechaEmision, formatNombre } from '../../lib/format'
 import { listarJueces, type JuezCatalogo } from '../../lib/juzgamiento'
-import { simularCategoria } from '../../lib/simulacion'
+import { cerrarSimulacion, simularCategoria } from '../../lib/simulacion'
 import { ResultadosCompetencia } from './ResultadosCompetencia'
 import { SelectorBusqueda } from './SelectorBusqueda'
 
@@ -115,12 +115,30 @@ export function AdminCompetencia() {
           {competencia.lugar ? ` · ${competencia.lugar}` : ''} · {inscritos} inscripciones en {clases.length} categorías
         </p>
         {competencia.simulacion ? (
-          <p className="typo-meta mt-3 rounded-[10px] border border-gold/60 px-3 py-2">
-            Esta es una simulación, no una competencia oficial.{' '}
-            <Link to={`/admin/competencias/${competencia.id}/simulacion`} className="font-medium text-gold underline">
-              Ir al ensayo
-            </Link>
-          </p>
+          <div className="typo-meta mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-gold/60 px-3 py-2">
+            <p>
+              Esta es una simulación: no es oficial y su puntuación no va al ranking.{' '}
+              <Link to={`/admin/competencias/${competencia.id}/simulacion`} className="font-medium text-gold underline">
+                Ir al ensayo
+              </Link>
+            </p>
+            <button
+              type="button"
+              className="typo-btn rounded-[10px] bg-gold px-4 py-2 text-bg"
+              onClick={() => {
+                const texto =
+                  '¿Cerrar la simulación? Se borra con sus categorías, votos y códigos de acceso. ' +
+                  'No queda como competencia ni como puntuación oficial. La competencia real no se toca.'
+                if (!window.confirm(texto)) return
+                setError(null)
+                cerrarSimulacion(competencia)
+                  .then((real) => navigate(real ? `/admin/competencias/${real}` : '/admin/competencias'))
+                  .catch((err: unknown) => setError(err instanceof Error ? err.message : 'No se pudo cerrar la simulación.'))
+              }}
+            >
+              Cerrar simulación
+            </button>
+          </div>
         ) : null}
         {error ? <p className="typo-meta mt-3 text-flag-red">{error}</p> : null}
       </div>

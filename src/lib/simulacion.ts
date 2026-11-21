@@ -543,6 +543,30 @@ export async function probarAccesos(detalle: DetalleCompetencia): Promise<Revisi
 // Simulación de una sola categoría (paralelo de la competencia real)
 // ---------------------------------------------------------------------------
 
+/**
+ * Cierra una simulación: la borra con sus categorías, inscripciones, votos y códigos. Nunca fue
+ * oficial ni pasó al ranking. Devuelve el id de la competencia real a la que acompañaba, si existe.
+ */
+export async function cerrarSimulacion(competencia: DetalleCompetencia['competencia']): Promise<string | null> {
+  if (!competencia.simulacion) throw new Error('Solo se cierran así las simulaciones.')
+  const prefijo = nombreParalelo('')
+  let real: string | null = null
+  if (competencia.nombre.startsWith(prefijo)) {
+    const { data } = await supabase
+      .from('competencias')
+      .select('id')
+      .eq('simulacion', false)
+      .eq('nombre', competencia.nombre.slice(prefijo.length))
+      .eq('fecha', competencia.fecha)
+      .limit(1)
+      .maybeSingle()
+    real = data ? String(data.id) : null
+  }
+  const { error } = await supabase.from('competencias').delete().eq('id', competencia.id).eq('simulacion', true)
+  if (error) throw error
+  return real
+}
+
 /** Nombre de la competencia de práctica que acompaña a una competencia real. */
 export function nombreParalelo(nombre: string): string {
   return `SIMULACIÓN · ${nombre}`
