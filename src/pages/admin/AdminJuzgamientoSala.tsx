@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/auth-context'
-import { hojaDeComputo, LEYENDA_F2, LUGARES_F2, LUGARES_PUESTO, type LugarF2 } from '../../lib/computo'
+import { hojaDeComputo, LEYENDA_F2, LUGARES_F2, LUGARES_PUESTO, SIN_VOTO, type LugarF2 } from '../../lib/computo'
 import { formatFechaEmision, formatFechaRegistro, formatNombre } from '../../lib/format'
 import {
   agregarEjemplar,
@@ -584,7 +584,7 @@ function Hoja({
                 </th>
                 {fila.porJuez.map((puntos, indice) => (
                   <td key={`${fila.numero}-${indice}`} className="border border-[#1c1408] px-2 py-2">
-                    {puntos ?? ''}
+                    {puntos ?? (fila.total != null ? SIN_VOTO : '')}
                   </td>
                 ))}
                 <td className="border border-[#1c1408] px-2 py-2 font-semibold">{fila.total ?? ''}</td>
