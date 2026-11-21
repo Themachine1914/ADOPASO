@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
-import { hojaDeComputo, LUGARES_PUESTO } from '../lib/computo'
+import { hojaDeComputo, LUGARES_PUESTO, SIN_VOTO } from '../lib/computo'
 import {
   EXCUSAS,
   estadoPista,
@@ -1150,7 +1150,7 @@ function TablaComputo({
               </th>
               {fila.porJuez.map((n, i) => (
                 <td key={i} className={celda}>
-                  {n ?? ''}
+                  {n ?? (fila.total != null ? SIN_VOTO : '')}
                 </td>
               ))}
               <td className={`${celda} font-semibold`}>{fila.total ?? ''}</td>

@@ -4,6 +4,9 @@ export type LugarF2 = (typeof LUGARES_F2)[number]
 
 export const LUGARES_PUESTO = ['1', '2', '3', '4', '5'] as const
 
+/** Reglamento 2019: donde un juez no puso al ejemplar en su votación final, cuenta como 6. */
+export const SIN_VOTO = 6
+
 export const LEYENDA_F2: Record<(typeof LUGARES_F2)[number], string> = {
   GC: 'Gran campeón',
   GCR: 'Gran campeón de reserva',
@@ -37,8 +40,9 @@ interface VotoComputo {
 }
 
 /**
- * Hoja de cómputo: cada juez aporta el número de lugar (1 es mejor).
- * Gana la suma más baja. Si empatan, gana quien tenga más primeros, luego más segundos.
+ * Hoja de cómputo: cada juez aporta el número de lugar (1 es mejor); si un juez no lo votó, cuenta
+ * SIN_VOTO (6). Entra en el orden todo ejemplar con al menos un voto. Gana la suma más baja; si
+ * empatan, gana quien tenga más primeros, luego más segundos… y por último el número menor.
  */
 export function hojaDeComputo(
   ejemplares: EjemplarComputo[],
@@ -56,12 +60,13 @@ export function hojaDeComputo(
       return voto ? Number(voto.lugar) : null
     })
     const completo = jueces.length > 0 && porJuez.every((n) => n != null)
-    const total = completo ? porJuez.reduce<number>((suma, n) => suma + (n ?? 0), 0) : null
+    const votado = jueces.length > 0 && porJuez.some((n) => n != null)
+    const total = votado ? porJuez.reduce<number>((suma, n) => suma + (n ?? SIN_VOTO), 0) : null
     return { numero: ejemplar.numero, nombre: ejemplar.nombre, porJuez, total, completo, puesto: null }
   })
 
   const ordenadas = filas
-    .filter((fila) => fila.completo && fila.total != null)
+    .filter((fila) => fila.total != null)
     .sort((a, b) => {
       if (a.total !== b.total) return (a.total ?? 0) - (b.total ?? 0)
       for (let lugar = 1; lugar <= 5; lugar += 1) {
