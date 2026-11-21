@@ -627,6 +627,15 @@ export interface EjemplarPista {
   escogido: boolean
   excusa: Excusa | null
   excusaFase?: 'formato_a' | 'final' | null
+  /** Datos del formulario de dirección de eventos (mesa y pre-pista). */
+  registro?: string | null
+  asociacion?: string | null
+  padre?: string | null
+  madre?: string | null
+  abueloMaterno?: string | null
+  criador?: string | null
+  adn?: string | null
+  microchip?: string | null
 }
 
 export interface ClasePista {
@@ -854,6 +863,20 @@ export async function pistaReabrirVotacion(codigo: string, claseId: string, juez
 /** Pre-pista o mesa: reparte los números disponibles por edad (el menor al más adulto). */
 export async function pistaAsignarNumeros(codigo: string, claseId: string, numeros: number[]): Promise<void> {
   const { error } = await supabase.rpc('acceso_asignar_numeros', { p_codigo: codigo, p_clase: claseId, p_numeros: numeros })
+  if (error) throw mensaje(error)
+}
+
+/**
+ * Pre-pista o mesa: pone a un ejemplar el número físico que le tocó. Si otro de la categoría
+ * ya lo tenía, se intercambian.
+ */
+export async function pistaNumeroEjemplar(codigo: string, claseId: string, ejemplarId: string, numero: number): Promise<void> {
+  const { error } = await supabase.rpc('acceso_numero_ejemplar', {
+    p_codigo: codigo,
+    p_clase: claseId,
+    p_ejemplar: ejemplarId,
+    p_numero: numero,
+  })
   if (error) throw mensaje(error)
 }
 
