@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
-import { hojaDeComputo, LUGARES_PUESTO, SIN_VOTO } from '../lib/computo'
+import { hojaDeComputo, juezMasCertero, LUGARES_PUESTO, SIN_VOTO } from '../lib/computo'
 import {
   EXCUSAS,
   estadoPista,
@@ -1100,6 +1100,7 @@ function Mesa({
       <section>
         <h2 className="typo-name text-lg">Hoja de cómputo</h2>
         <p className="typo-meta mt-1">Suma de los lugares de cada juez. La suma más baja queda primera.</p>
+        <Narrador clase={clase} estado={estado} computo={computo} />
         <TablaComputo estilo={estiloDe(estado)} computo={computo} puestos={puestos} />
         {computo.length === 0 ? <p className="typo-meta mt-2">Todavía no hay ejemplares en el recorrido individual.</p> : null}
       </section>
@@ -1143,6 +1144,49 @@ function TablaVotos({ clase, estado, impresa }: { clase: ClasePista; estado: Est
         </div>
       )}
     </section>
+  )
+}
+
+/**
+ * Juez que narra los lugares: el más certero (más ejemplares en el mismo lugar que el resultado final).
+ * Sale cuando todos los jueces finalizaron la votación final. Si empatan, ellos deciden quién narra.
+ */
+function Narrador({
+  clase,
+  estado,
+  computo,
+  impresa,
+}: {
+  clase: ClasePista
+  estado: EstadoPista
+  computo: ReturnType<typeof hojaDeComputo>
+  impresa?: boolean
+}) {
+  const puestos = estado.jueces.map((j) => j.puesto)
+  const listo =
+    clase.fase === 'cerrada' ||
+    (clase.fase === 'votacion' && puestos.length > 0 && puestos.every((p) => juezFinalizo(clase, p, 'votacion')))
+  if (!listo) return null
+  const votos = clase.votos.map((v) => ({ juezPuesto: v.juezPuesto, lugar: v.lugar, ejemplarNumero: v.numero }))
+  const { porJuez, ganadores } = juezMasCertero(computo, puestos, votos)
+  if (ganadores.length === 0) return null
+  const aciertos = porJuez.find((j) => j.juezPuesto === ganadores[0])?.aciertos ?? 0
+  const plural = (n: number) => `${n} ${n === 1 ? 'acierto' : 'aciertos'}`
+  const titulo =
+    ganadores.length === 1
+      ? `Narra los lugares: ${nombreJuez(estado, ganadores[0])}`
+      : `Empate entre ${ganadores.map((p) => nombreJuez(estado, p)).join(' y ')}: ellos deciden quién narra`
+  return (
+    <div className={impresa ? 'mt-3 text-sm' : 'mt-3 rounded-[12px] border border-gold/60 bg-surface p-4'}>
+      <p className={impresa ? 'font-semibold' : 'typo-label'}>Juez más certero</p>
+      <p className={impresa ? '' : 'typo-name mt-1 text-base text-gold'}>
+        {titulo} ({plural(aciertos)}).
+      </p>
+      <p className={impresa ? 'text-xs' : 'typo-meta mt-1'}>
+        Aciertos = ejemplares en el mismo lugar que el resultado final:{' '}
+        {porJuez.map((j) => `J${etiquetaJuez(j.juezPuesto, estiloDe(estado))} ${j.aciertos}`).join(' · ')}.
+      </p>
+    </div>
   )
 }
 
@@ -1260,6 +1304,7 @@ function Acta({ clase, estado }: { clase: ClasePista; estado: EstadoPista }) {
 
       <h2 className="mt-6 text-base font-bold">Hoja de cómputo</h2>
       <TablaComputo estilo={estiloDe(estado)} computo={computo} puestos={puestos} impresa />
+      <Narrador clase={clase} estado={estado} computo={computo} impresa />
 
       <h2 className="mt-8 text-base font-bold">Firmas</h2>
       <div className="mt-6 grid grid-cols-2 gap-x-10 gap-y-12 text-sm">
