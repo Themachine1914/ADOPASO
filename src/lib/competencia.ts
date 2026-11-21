@@ -877,6 +877,10 @@ export async function pistaNumeroEjemplar(codigo: string, claseId: string, ejemp
     p_ejemplar: ejemplarId,
     p_numero: numero,
   })
+  // Mientras la base no tenga la función nueva, se usa el reparto por edad.
+  if (error?.code === 'PGRST202' || error?.code === '42883') {
+    throw new Error('Esta opción todavía no está activa. Use «Repartir varios números por edad».')
+  }
   if (error) throw mensaje(error)
 }
 
