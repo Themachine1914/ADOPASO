@@ -16,6 +16,7 @@ import {
   MAXIMO_FORMATO_A,
   mayoriaJueces,
   pistaAsignarNumeros,
+  pistaNumeroEjemplar,
   pistaAsistencia,
   pistaElegirClase,
   pistaEscoger,
@@ -597,15 +598,12 @@ function ProximasCategorias({ clases, codigo, hacer }: { clases: ClasePista[]; c
 }
 
 function AsignarNumeros({ clase, codigo, hacer }: { clase: ClasePista; codigo: string; hacer: Hacer }) {
-  const [texto, setTexto] = useState('')
   const [abierto, setAbierto] = useState(false)
+  const [porEdadAbierto, setPorEdadAbierto] = useState(false)
   useEffect(() => {
-    setTexto('')
     setAbierto(false)
+    setPorEdadAbierto(false)
   }, [clase.id])
-  const ordenados = [...clase.ejemplares].sort(porEdad)
-  const numeros = leerNumeros(texto)
-  const faltan = ordenados.length - numeros.length
   if (!abierto) {
     return (
       <button
@@ -613,13 +611,113 @@ function AsignarNumeros({ clase, codigo, hacer }: { clase: ClasePista; codigo: s
         className="typo-btn mb-2 rounded-[10px] border border-border px-4 py-2"
         onClick={() => setAbierto(true)}
       >
-        Asignar otros números
+        Cambiar números
       </button>
     )
   }
   return (
     <section className="mb-2 rounded-[12px] border border-gold/60 bg-surface p-4">
-      <h2 className="typo-name text-lg">Asignar números</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="typo-name text-lg">Números de la pre-pista</h2>
+        <button type="button" className="typo-meta underline" onClick={() => setAbierto(false)}>
+          Cerrar
+        </button>
+      </div>
+      {porEdadAbierto ? (
+        <RepartirPorEdad clase={clase} codigo={codigo} hacer={hacer} onListo={() => setPorEdadAbierto(false)} />
+      ) : (
+        <>
+          <p className="typo-meta mt-1">
+            Escriba el número que le entregó a cada ejemplar y pulse «Poner». Si otro ya lo tenía, se intercambian.
+            Solo se puede antes de que los jueces empiecen.
+          </p>
+          <ul className="mt-3 divide-y divide-border rounded-[10px] border border-border">
+            {[...clase.ejemplares]
+              .sort((a, b) => (a.numero ?? 99999) - (b.numero ?? 99999) || porEdad(a, b))
+              .map((item) => (
+                <NumeroEjemplar key={item.id} item={item} clase={clase} codigo={codigo} hacer={hacer} />
+              ))}
+          </ul>
+          <button type="button" className="typo-meta mt-3 underline" onClick={() => setPorEdadAbierto(true)}>
+            Repartir varios números por edad
+          </button>
+        </>
+      )}
+    </section>
+  )
+}
+
+/** Una fila: el ejemplar y el número físico que le tocó. */
+function NumeroEjemplar({ item, clase, codigo, hacer }: { item: EjemplarPista; clase: ClasePista; codigo: string; hacer: Hacer }) {
+  const [texto, setTexto] = useState(item.numero != null ? String(item.numero) : '')
+  const [guardando, setGuardando] = useState(false)
+  useEffect(() => {
+    setTexto(item.numero != null ? String(item.numero) : '')
+  }, [item.numero])
+  const numero = /^\d{1,4}$/.test(texto.trim()) ? Number(texto.trim()) : null
+  const cambia = numero != null && numero > 0 && numero !== item.numero
+  const ocupado = cambia ? clase.ejemplares.find((otro) => otro.id !== item.id && otro.numero === numero) : undefined
+
+  async function poner() {
+    if (!cambia || numero == null || !item.id) return
+    if (
+      ocupado &&
+      !window.confirm(
+        `El ${numero} lo tiene ${formatNombre(ocupado.nombre)}. ` +
+          (item.numero != null ? `¿Intercambiar? ${formatNombre(ocupado.nombre)} se queda con el ${item.numero}.` : `¿Quitárselo? Se queda sin número.`),
+      )
+    ) {
+      return
+    }
+    setGuardando(true)
+    await hacer(() => pistaNumeroEjemplar(codigo, clase.id, item.id!, numero))
+    setGuardando(false)
+  }
+
+  return (
+    <li className="flex flex-wrap items-center gap-3 px-3 py-2">
+      <form
+        className="flex items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void poner()
+        }}
+      >
+        <input
+          aria-label={`Número de ${item.nombre ?? 'ejemplar'}`}
+          inputMode="numeric"
+          value={texto}
+          onChange={(e) => setTexto(e.target.value.replace(/\D/g, '').slice(0, 4))}
+          placeholder="—"
+          className="w-16 rounded-[10px] border border-border bg-bg px-2 py-2 text-center font-display text-xl font-semibold text-gold"
+        />
+        <button
+          type="submit"
+          disabled={!cambia || guardando}
+          className="typo-btn rounded-[10px] bg-gold px-3 py-2 text-sm text-bg disabled:opacity-40"
+        >
+          {guardando ? '…' : 'Poner'}
+        </button>
+      </form>
+      <span className="min-w-0">
+        <span className="typo-name block text-sm">{formatNombre(item.nombre)}</span>
+        <span className="typo-meta block">
+          {item.montador ? formatNombre(item.montador) : 'Sin montador'}
+          {ocupado ? ` · el ${numero} lo tiene ${formatNombre(ocupado.nombre)}` : ''}
+        </span>
+      </span>
+    </li>
+  )
+}
+
+/** Reparto por edad: se escriben los números disponibles y el menor va al más adulto. */
+function RepartirPorEdad({ clase, codigo, hacer, onListo }: { clase: ClasePista; codigo: string; hacer: Hacer; onListo: () => void }) {
+  const [texto, setTexto] = useState('')
+  const ordenados = [...clase.ejemplares].sort(porEdad)
+  const numeros = leerNumeros(texto)
+  const faltan = ordenados.length - numeros.length
+  return (
+    <>
       <p className="typo-meta mt-1">
         Escriba los {ordenados.length} números disponibles, separados por coma (también vale un rango, por ejemplo 20-25).
         El número menor va al ejemplar más adulto. Solo se puede antes de que los jueces empiecen.
@@ -656,21 +754,20 @@ function AsignarNumeros({ clase, codigo, hacer }: { clase: ClasePista; codigo: s
             if (!window.confirm(`¿Guardar los números ${numeros.join(', ')}? La mesa técnica los verá enseguida.`)) return
             void hacer(async () => {
               await pistaAsignarNumeros(codigo, clase.id, numeros)
-              setAbierto(false)
               setTexto('')
+              onListo()
             })
           }}
         >
           Guardar números
         </button>
-        <button type="button" className="typo-btn rounded-[10px] border border-border px-4 py-2" onClick={() => setAbierto(false)}>
-          Cancelar
+        <button type="button" className="typo-btn rounded-[10px] border border-border px-4 py-2" onClick={onListo}>
+          Volver a uno por uno
         </button>
       </div>
-    </section>
+    </>
   )
 }
-
 // ---------------------------------------------------------------------------
 // Mesa técnica
 // ---------------------------------------------------------------------------

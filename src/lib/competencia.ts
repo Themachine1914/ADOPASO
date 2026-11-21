@@ -857,6 +857,20 @@ export async function pistaAsignarNumeros(codigo: string, claseId: string, numer
   if (error) throw mensaje(error)
 }
 
+/**
+ * Pre-pista o mesa: pone a un ejemplar el número físico que le tocó. Si otro de la categoría
+ * ya lo tenía, se intercambian.
+ */
+export async function pistaNumeroEjemplar(codigo: string, claseId: string, ejemplarId: string, numero: number): Promise<void> {
+  const { error } = await supabase.rpc('acceso_numero_ejemplar', {
+    p_codigo: codigo,
+    p_clase: claseId,
+    p_ejemplar: ejemplarId,
+    p_numero: numero,
+  })
+  if (error) throw mensaje(error)
+}
+
 /** Mesa: la categoría en pista lleva o no Formato A. Se puede corregir mientras no haya marcas ni votos. */
 export async function pistaLlevaFormatoA(codigo: string, claseId: string, lleva: boolean): Promise<void> {
   const { error } = await supabase.rpc('acceso_lleva_formato_a', { p_codigo: codigo, p_clase: claseId, p_lleva: lleva })
