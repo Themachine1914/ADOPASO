@@ -84,3 +84,30 @@ export function hojaDeComputo(
 
   return filas
 }
+
+export interface CerteroJuez {
+  juezPuesto: number
+  aciertos: number
+}
+
+/**
+ * Juez más certero de la votación final: cuántos ejemplares puso en el mismo lugar que el resultado
+ * final (1.º al 5.º). El que más aciertos tenga narra los lugares; si empatan, deciden ellos.
+ */
+export function juezMasCertero(
+  computo: FilaComputo[],
+  jueces: number[],
+  votos: VotoComputo[],
+): { porJuez: CerteroJuez[]; ganadores: number[] } {
+  const finalPorLugar = new Map<string, number>()
+  for (const fila of computo) {
+    if (fila.puesto != null && fila.puesto <= LUGARES_PUESTO.length) finalPorLugar.set(String(fila.puesto), fila.numero)
+  }
+  const porJuez = jueces.map((juezPuesto) => ({
+    juezPuesto,
+    aciertos: votos.filter((v) => v.juezPuesto === juezPuesto && finalPorLugar.get(v.lugar) === v.ejemplarNumero).length,
+  }))
+  const mejor = Math.max(0, ...porJuez.map((j) => j.aciertos))
+  const ganadores = finalPorLugar.size === 0 ? [] : porJuez.filter((j) => j.aciertos === mejor).map((j) => j.juezPuesto)
+  return { porJuez, ganadores }
+}
