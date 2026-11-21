@@ -17,6 +17,7 @@ import {
   etiquetaAcceso,
   etiquetaJuez,
   etiquetaFase,
+  faseDeCategoria,
   finalizarCompetencia,
   inscribir,
   listarCatalogoCategorias,
@@ -54,6 +55,7 @@ export function AdminCompetencia() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editando, setEditando] = useState<string | null>(null)
+  const [agregando, setAgregando] = useState<string | null>(null)
 
   async function recargar() {
     setDetalle(await cargarCompetencia(id))
@@ -185,10 +187,32 @@ export function AdminCompetencia() {
           <p className="typo-meta mt-4">Todavía no hay caballos inscritos.</p>
         ) : (
           <div className="mt-4 space-y-4">
-            {clases.map((clase) => (
+            {clases.map((clase) => {
+              // Se inscribe a última hora mientras la categoría no esté en juzgamiento.
+              const categoriaClase = catalogo.find((c) => c.codigo === clase.eventoCodigo) ?? null
+              const admiteInscripcion =
+                !finalizada && categoriaClase != null && (clase.fase === 'inscripcion' || clase.fase === 'prepista')
+              return (
               <div key={clase.id} className="overflow-hidden rounded-[12px] border border-border">
                 <div className="flex flex-wrap items-center justify-between gap-2 bg-surface px-4 py-3">
-                  <p className="typo-name text-base">{clase.categoria}</p>
+                  <div className="flex items-center gap-3">
+                    <p className="typo-name text-base">{clase.categoria}</p>
+                    {admiteInscripcion ? (
+                      <button
+                        type="button"
+                        aria-label={`Inscribir un caballo en ${clase.categoria}`}
+                        title="Inscribir un caballo en esta categoría"
+                        aria-expanded={agregando === clase.id}
+                        className={[
+                          'flex h-8 w-8 items-center justify-center rounded-full border text-lg font-semibold leading-none',
+                          agregando === clase.id ? 'border-gold bg-gold text-bg' : 'border-gold/60 text-gold hover:bg-gold hover:text-bg',
+                        ].join(' ')}
+                        onClick={() => setAgregando(agregando === clase.id ? null : clase.id)}
+                      >
+                        {agregando === clase.id ? '×' : '+'}
+                      </button>
+                    ) : null}
+                  </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="typo-caption text-gold">
                       {clase.fase === 'inscripcion' ? 'Inscripción abierta' : etiquetaFase(clase.fase)}
@@ -236,6 +260,34 @@ export function AdminCompetencia() {
                     </Link>
                   </div>
                 </div>
+                {admiteInscripcion && agregando === clase.id ? (
+                  <InscribirEnCategoria
+                    clase={clase}
+                    categoria={categoriaClase}
+                    clases={clases}
+                    fecha={competencia.fecha}
+                    onCerrar={() => setAgregando(null)}
+                    onInscribir={async (caballo, pagado, montador) => {
+                      // Si la categoría ya estaba cerrada, el nuevo recibe el siguiente número libre.
+                      // La mesa técnica pudo haber sacado la categoría a pista mientras esta pantalla estaba abierta.
+                      const fase = await faseDeCategoria(clase.id)
+                      if (fase !== 'inscripcion' && fase !== 'prepista') {
+                        await recargar().catch(() => undefined)
+                        throw new Error(`${clase.categoria} ya entró a juzgamiento; no se puede inscribir.`)
+                      }
+                      await inscribir(competencia.id, categoriaClase, caballo, pagado, montador)
+                      try {
+                        if (fase === 'prepista') await numerarCategoria(clase.id)
+                      } catch {
+                        throw new Error(
+                          `${formatNombre(caballo.nombre)} quedó inscrito, pero sin número. Pulse «Numerar los nuevos» en ${clase.categoria}.`,
+                        )
+                      } finally {
+                        await recargar().catch(() => undefined)
+                      }
+                    }}
+                  />
+                ) : null}
                 <table className="w-full text-left text-sm">
                   <thead className="typo-caption">
                     <tr className="border-b border-border">
@@ -332,7 +384,8 @@ export function AdminCompetencia() {
                   </tbody>
                 </table>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </section>
@@ -581,6 +634,186 @@ function Inscripcion({
       ) : null}
       {aviso ? <p className="typo-meta mt-3">{aviso}</p> : null}
     </section>
+  )
+}
+
+/** Inscripción de última hora directo en una categoría, desde el «+» de su tarjeta. */
+function InscribirEnCategoria({
+  clase,
+  categoria,
+  clases,
+  fecha,
+  onCerrar,
+  onInscribir,
+}: {
+  clase: ClaseCompetencia
+  categoria: CategoriaCatalogo
+  clases: ClaseCompetencia[]
+  fecha: string
+  onCerrar: () => void
+  onInscribir: (caballo: CaballoInscribible, pagado: boolean, montador: string | null) => Promise<void>
+}) {
+  const [busqueda, setBusqueda] = useState('')
+  const [resultados, setResultados] = useState<CaballoInscribible[]>([])
+  const [caballo, setCaballo] = useState<CaballoInscribible | null>(null)
+  const [montador, setMontador] = useState<string | null>(null)
+  const [pagado, setPagado] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+  const [aviso, setAviso] = useState<string | null>(null)
+
+  useEffect(() => {
+    let vigente = true
+    const espera = window.setTimeout(() => {
+      buscarCaballos(busqueda)
+        .then((filas) => {
+          if (vigente) setResultados(filas)
+        })
+        .catch(() => {
+          if (vigente) setResultados([])
+        })
+    }, 250)
+    return () => {
+      vigente = false
+      window.clearTimeout(espera)
+    }
+  }, [busqueda])
+
+  const yaInscritos = new Set(clase.inscritos.map((item) => item.caballoCodigo))
+  const { meses, sugerencias } = caballo
+    ? categoriasDelCaballo(caballo, fecha, [categoria])
+    : { meses: null, sugerencias: [] }
+  const corresponde = sugerencias.length > 0
+
+  return (
+    <div className="border-b border-border bg-bg/40 px-4 py-4">
+      <p className="typo-name text-sm">Inscribir en {clase.categoria}</p>
+      {clase.fase === 'prepista' ? (
+        <p className="typo-meta mt-1">La categoría ya está cerrada: el caballo recibe el siguiente número libre y los demás conservan el suyo.</p>
+      ) : null}
+
+      {!caballo ? (
+        <>
+          <label className="mt-3 block max-w-md">
+            <span className="typo-label">Buscar por nombre o registro</span>
+            <input
+              autoFocus
+              value={busqueda}
+              onChange={(e) => {
+                setBusqueda(e.target.value)
+                setAviso(null)
+              }}
+              placeholder="Ej.: Bandolero"
+              className="mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-2 text-ink"
+            />
+          </label>
+          {resultados.length > 0 ? (
+            <ul className="mt-2 max-w-md divide-y divide-border overflow-hidden rounded-[10px] border border-border">
+              {resultados.map((item) => {
+                const inscrito = yaInscritos.has(item.codigo)
+                return (
+                  <li key={item.codigo}>
+                    <button
+                      type="button"
+                      disabled={inscrito}
+                      className="block w-full bg-bg/40 px-4 py-2 text-left hover:bg-surface-elevated disabled:opacity-50"
+                      onClick={() => {
+                        setCaballo(item)
+                        setMontador(null)
+                        setPagado(false)
+                        setAviso(null)
+                      }}
+                    >
+                      <span className="typo-name text-sm">{formatNombre(item.nombre)}</span>
+                      <span className="typo-meta block">
+                        {item.codigo} · {item.sexo === 'H' ? 'Hembra' : item.sexo === 'M' ? 'Macho' : 'Sin sexo'}
+                        {item.propietario ? ` · ${formatNombre(item.propietario)}` : ''}
+                        {inscrito ? ' · ya está en esta categoría' : ''}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : null}
+        </>
+      ) : (
+        <div className="mt-3 space-y-4">
+          <div>
+            <p className="typo-name text-base">{formatNombre(caballo.nombre)}</p>
+            <p className="typo-meta mt-1">
+              {caballo.codigo}
+              {caballo.modalidad ? ` · ${caballo.modalidad}` : ''}
+              {meses != null ? ` · ${meses} meses el día de la competencia` : ''}
+            </p>
+            {meses == null ? (
+              <p className="typo-meta mt-2 text-flag-red">
+                Este caballo no tiene fecha de nacimiento en el registro. Complétela antes de inscribirlo.
+              </p>
+            ) : !corresponde ? (
+              <p className="typo-meta mt-2 text-flag-red">Por su sexo o su edad, este caballo no corresponde a {categoria.nombre}.</p>
+            ) : null}
+          </div>
+          {corresponde ? (
+            <>
+              <div className="max-w-sm">
+                <span className="typo-label">Montador</span>
+                <SelectorBusqueda
+                  busca={MONTADORES}
+                  valor={montador ?? ''}
+                  etiqueta={formatNombre(montador)}
+                  onElegir={(opcion) => setMontador(opcion?.valor ?? null)}
+                />
+              </div>
+              <label className="typo-meta flex items-center gap-2">
+                <input type="checkbox" checked={pagado} onChange={(e) => setPagado(e.target.checked)} />
+                Pagó la inscripción
+              </label>
+            </>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            {corresponde ? (
+              <button
+                type="button"
+                disabled={guardando}
+                className="typo-btn rounded-[10px] bg-gold px-4 py-2 text-bg disabled:opacity-60"
+                onClick={async () => {
+                  const otro = montadorRepetido(clases, categoria.codigo, montador)
+                  if (
+                    otro &&
+                    !window.confirm(
+                      `${formatNombre(montador)} ya monta a ${formatNombre(otro.nombre)} en ${categoria.nombre}. Un montador no puede llevar dos caballos en la misma categoría. ¿Inscribir de todas formas?`,
+                    )
+                  ) {
+                    return
+                  }
+                  setGuardando(true)
+                  setAviso(null)
+                  try {
+                    await onInscribir(caballo, pagado, montador)
+                    setAviso(`${formatNombre(caballo.nombre)} quedó inscrito en ${categoria.nombre}.`)
+                    setCaballo(null)
+                    setBusqueda('')
+                  } catch (err) {
+                    setAviso(err instanceof Error ? err.message : 'No se pudo inscribir.')
+                  } finally {
+                    setGuardando(false)
+                  }
+                }}
+              >
+                {guardando ? 'Inscribiendo…' : 'Inscribir aquí'}
+              </button>
+            ) : null}
+            <button type="button" className="typo-meta underline" onClick={() => setCaballo(null)}>
+              Elegir otro caballo
+            </button>
+          </div>
+        </div>
+      )}
+      {aviso ? <p className="typo-meta mt-3">{aviso}</p> : null}
+      <button type="button" className="typo-meta mt-3 block text-muted underline" onClick={onCerrar}>
+        Cerrar
+      </button>
+    </div>
   )
 }
 
