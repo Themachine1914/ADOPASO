@@ -543,6 +543,30 @@ export async function probarAccesos(detalle: DetalleCompetencia): Promise<Revisi
 // Simulación de una sola categoría (paralelo de la competencia real)
 // ---------------------------------------------------------------------------
 
+/**
+ * Cierra una simulación: la borra con sus categorías, inscripciones, votos y códigos. Nunca fue
+ * oficial ni pasó al ranking. Devuelve el id de la competencia real a la que acompañaba, si existe.
+ */
+export async function cerrarSimulacion(competencia: DetalleCompetencia['competencia']): Promise<string | null> {
+  if (!competencia.simulacion) throw new Error('Solo se cierran así las simulaciones.')
+  const prefijo = nombreParalelo('')
+  let real: string | null = null
+  if (competencia.nombre.startsWith(prefijo)) {
+    const { data } = await supabase
+      .from('competencias')
+      .select('id')
+      .eq('simulacion', false)
+      .eq('nombre', competencia.nombre.slice(prefijo.length))
+      .eq('fecha', competencia.fecha)
+      .limit(1)
+      .maybeSingle()
+    real = data ? String(data.id) : null
+  }
+  const { error } = await supabase.from('competencias').delete().eq('id', competencia.id).eq('simulacion', true)
+  if (error) throw error
+  return real
+}
+
 /** Nombre de la competencia de práctica que acompaña a una competencia real. */
 export function nombreParalelo(nombre: string): string {
   return `SIMULACIÓN · ${nombre}`
@@ -582,12 +606,29 @@ export async function simularCategoria(detalle: DetalleCompetencia, claseId: str
       lugar: competencia.lugar ?? '',
       simulacion: true,
     })
+    if (competencia.etiquetaJueces === 'letra') {
+      const { error: errorEstilo } = await supabase.from('competencias').update({ etiqueta_jueces: 'letra' }).eq('id', id)
+      if (errorEstilo) throw errorEstilo
+    }
     await crearAcceso(id, { rol: 'mesa' })
     await crearAcceso(id, { rol: 'prepista' })
-    const jueces = detalle.accesos.filter((a) => a.rol === 'juez' && a.juezPuesto != null)
+    // Los mismos jueces de la real, con su código del catálogo de jueces.
+    const { data: reales, error: errorJueces } = await supabase
+      .from('competencia_accesos')
+      .select('juez_puesto, juez_codigo, nombre')
+      .eq('competencia_id', competencia.id)
+      .eq('rol', 'juez')
+      .order('juez_puesto')
+    if (errorJueces) throw errorJueces
+    const jueces = (reales ?? []).filter((j) => j.juez_puesto != null)
     if (jueces.length > 0) {
       for (const juez of jueces) {
-        await crearAcceso(id, { rol: 'juez', juezPuesto: juez.juezPuesto!, nombre: juez.nombre ?? undefined })
+        await crearAcceso(id, {
+          rol: 'juez',
+          juezPuesto: Number(juez.juez_puesto),
+          juezCodigo: juez.juez_codigo != null ? Number(juez.juez_codigo) : undefined,
+          nombre: juez.nombre ?? undefined,
+        })
       }
     } else {
       for (let puesto = 1; puesto <= JUECES_SIMULADOS; puesto += 1) {

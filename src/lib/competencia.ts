@@ -33,8 +33,17 @@ export function etiquetaExcusa(excusa: string | null): string {
   return EXCUSAS.find((e) => e.value === excusa)?.label ?? ''
 }
 
-export function etiquetaAcceso(rol: RolAcceso, juezPuesto?: number | null): string {
-  if (rol === 'juez') return `Juez ${juezPuesto ?? ''}`.trim()
+/** Cómo se llaman los puestos de juez en la competencia: 1, 2, 3 o A, B, C. */
+export type EstiloJueces = 'numero' | 'letra'
+
+/** Puesto 1 → "1" o "A"; puesto 2 → "2" o "B"… */
+export function etiquetaJuez(puesto: number | null | undefined, estilo: EstiloJueces = 'numero'): string {
+  if (puesto == null) return ''
+  return estilo === 'letra' ? String.fromCharCode(64 + puesto) : String(puesto)
+}
+
+export function etiquetaAcceso(rol: RolAcceso, juezPuesto?: number | null, estilo: EstiloJueces = 'numero'): string {
+  if (rol === 'juez') return `Juez ${etiquetaJuez(juezPuesto, estilo)}`.trim()
   return rol === 'prepista' ? 'Pre-pista' : 'Mesa técnica'
 }
 
@@ -51,6 +60,7 @@ export interface Competencia {
   estado: 'inscripcion' | 'en_curso' | 'finalizada'
   simulacion: boolean
   sincronizadoEn: string | null
+  etiquetaJueces: EstiloJueces
 }
 
 export interface Inscripcion {
@@ -126,13 +136,14 @@ function mapCompetencia(row: Record<string, unknown>): Competencia {
     estado: String(row.estado) as Competencia['estado'],
     simulacion: Boolean(row.simulacion),
     sincronizadoEn: typeof row.sincronizado_en === 'string' ? row.sincronizado_en : null,
+    etiquetaJueces: row.etiqueta_jueces === 'letra' ? 'letra' : 'numero',
   }
 }
 
 export async function listarCompetencias(): Promise<Competencia[]> {
   const { data, error } = await supabase
     .from('competencias')
-    .select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion, sincronizado_en')
+    .select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion, sincronizado_en, etiqueta_jueces')
     .order('fecha', { ascending: false })
   if (error) throw error
   return (data ?? []).map(mapCompetencia)
@@ -162,7 +173,7 @@ export async function crearCompetencia(input: {
 
 export async function cargarCompetencia(id: string): Promise<DetalleCompetencia | null> {
   const [competencia, clases, accesos] = await Promise.all([
-    supabase.from('competencias').select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion, sincronizado_en').eq('id', id).maybeSingle(),
+    supabase.from('competencias').select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion, sincronizado_en, etiqueta_jueces').eq('id', id).maybeSingle(),
     supabase
       .from('juzgamientos')
       .select(
@@ -554,6 +565,22 @@ export async function crearAcceso(
   if (error) throw error
 }
 
+export async function cambiarEstiloJueces(competenciaId: string, estilo: EstiloJueces): Promise<void> {
+  const { error } = await supabase.from('competencias').update({ etiqueta_jueces: estilo }).eq('id', competenciaId)
+  if (error) throw error
+}
+
+/** Cambia a la persona sentada en un puesto de juez. Los votos del puesto se quedan. */
+export async function reasignarJuez(competenciaId: string, puesto: number, juezCodigo: number | null, nombre: string): Promise<void> {
+  const { error } = await supabase.rpc('reasignar_juez', {
+    p_competencia: competenciaId,
+    p_puesto: puesto,
+    p_juez_codigo: juezCodigo,
+    p_nombre: nombre,
+  })
+  if (error) throw new Error(error.message)
+}
+
 export async function borrarAcceso(codigo: string): Promise<void> {
   const { error } = await supabase.from('competencia_accesos').delete().eq('codigo', codigo)
   if (error) throw error
@@ -564,8 +591,8 @@ export function enlaceAcceso(codigo: string): string {
 }
 
 /** Enlace para mandar el acceso por WhatsApp; la persona elige el contacto en su teléfono. */
-export function enlaceWhatsApp(acceso: Acceso, competencia: string): string {
-  const puesto = etiquetaAcceso(acceso.rol, acceso.juezPuesto)
+export function enlaceWhatsApp(acceso: Acceso, competencia: string, estilo: EstiloJueces = 'numero'): string {
+  const puesto = etiquetaAcceso(acceso.rol, acceso.juezPuesto, estilo)
   const texto = [
     `ADOPASO · ${competencia}`,
     `Acceso de ${puesto}${acceso.nombre ? ` (${acceso.nombre})` : ''}.`,
@@ -632,7 +659,13 @@ function nombreEjemplar(item: EjemplarPista): string {
  * Lo que impide abrir una fase posterior. Volver a una fase anterior no exige nada.
  * La edad no entra: se mira la asistencia, el formato A, quién pasa y la votación.
  */
-export function faltantesParaFase(clase: ClasePista, jueces: number[], destino: Fase): string[] {
+export function faltantesParaFase(
+  clase: ClasePista,
+  jueces: number[],
+  destino: Fase,
+  estilo: EstiloJueces = 'numero',
+): string[] {
+  const j = (puesto: number) => etiquetaJuez(puesto, estilo)
   const actual = ORDEN_FASE.indexOf(clase.fase)
   const hasta = ORDEN_FASE.indexOf(destino)
   if (hasta <= actual) return []
@@ -663,7 +696,7 @@ export function faltantesParaFase(clase: ClasePista, jueces: number[], destino: 
     if (jueces.length === 0) faltan.push('La competencia no tiene jueces con código.')
     for (const puesto of jueces) {
       if (!juezFinalizo(clase, puesto, 'formato_a')) {
-        faltan.push(`El juez ${puesto} no ha finalizado su formato A.`)
+        faltan.push(`El juez ${j(puesto)} no ha finalizado su formato A.`)
       }
     }
     for (const item of lista) {
@@ -689,19 +722,19 @@ export function faltantesParaFase(clase: ClasePista, jueces: number[], destino: 
       const propios = clase.votos.filter((voto) => voto.juezPuesto === puesto)
       const numeros = propios.map((voto) => voto.numero)
       if (new Set(numeros).size !== numeros.length) {
-        faltan.push(`El juez ${puesto} repitió un número en la votación final.`)
+        faltan.push(`El juez ${j(puesto)} repitió un número en la votación final.`)
       }
       for (const voto of propios) {
         if (!validos.has(voto.numero)) {
-          faltan.push(`El juez ${puesto} votó al ejemplar ${voto.numero}, que no está en el recorrido.`)
+          faltan.push(`El juez ${j(puesto)} votó al ejemplar ${voto.numero}, que no está en el recorrido.`)
         }
       }
       const votados = new Set(propios.map((voto) => voto.lugar))
       const sinVotar = LUGARES_PUESTO.slice(0, lugares).filter((lugar) => !votados.has(lugar))
       if (sinVotar.length > 0) {
-        faltan.push(`Al juez ${puesto} le falta votar ${sinVotar.map((lugar) => `${lugar}.º`).join(', ')}.`)
+        faltan.push(`Al juez ${j(puesto)} le falta votar ${sinVotar.map((lugar) => `${lugar}.º`).join(', ')}.`)
       } else if (!juezFinalizo(clase, puesto, 'votacion')) {
-        faltan.push(`El juez ${puesto} no ha finalizado su votación final.`)
+        faltan.push(`El juez ${j(puesto)} no ha finalizado su votación final.`)
       }
     }
   }
@@ -713,7 +746,15 @@ export interface EstadoPista {
   rol: RolAcceso
   juezPuesto: number | null
   nombre: string | null
-  competencia: { id: string; nombre: string; fecha: string; lugar: string | null; estado: string; simulacion: boolean }
+  competencia: {
+    id: string
+    nombre: string
+    fecha: string
+    lugar: string | null
+    estado: string
+    simulacion: boolean
+    etiquetaJueces?: EstiloJueces
+  }
   jueces: Array<{ puesto: number; nombre: string | null }>
   /** Categoría que la mesa técnica tiene en pista. */
   claseActiva: string | null

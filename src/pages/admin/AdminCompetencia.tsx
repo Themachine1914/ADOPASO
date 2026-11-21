@@ -5,6 +5,7 @@ import type { BuscaLista } from '../../admin/categorias'
 import { useAuth } from '../../lib/auth-context'
 import {
   borrarAcceso,
+  cambiarEstiloJueces,
   buscarCaballos,
   cambiarMontador,
   cargarCompetencia,
@@ -14,6 +15,7 @@ import {
   enlaceAcceso,
   enlaceWhatsApp,
   etiquetaAcceso,
+  etiquetaJuez,
   etiquetaFase,
   finalizarCompetencia,
   inscribir,
@@ -24,6 +26,7 @@ import {
   numerarCategoria,
   numerarCompetencia,
   quitarInscripcion,
+  reasignarJuez,
   ultimoGrupo,
   type CaballoInscribible,
   type CategoriaCatalogo,
@@ -34,7 +37,7 @@ import {
 } from '../../lib/competencia'
 import { formatFechaEmision, formatNombre } from '../../lib/format'
 import { listarJueces, type JuezCatalogo } from '../../lib/juzgamiento'
-import { simularCategoria } from '../../lib/simulacion'
+import { cerrarSimulacion, simularCategoria } from '../../lib/simulacion'
 import { ResultadosCompetencia } from './ResultadosCompetencia'
 import { SelectorBusqueda } from './SelectorBusqueda'
 
@@ -115,12 +118,30 @@ export function AdminCompetencia() {
           {competencia.lugar ? ` · ${competencia.lugar}` : ''} · {inscritos} inscripciones en {clases.length} categorías
         </p>
         {competencia.simulacion ? (
-          <p className="typo-meta mt-3 rounded-[10px] border border-gold/60 px-3 py-2">
-            Esta es una simulación, no una competencia oficial.{' '}
-            <Link to={`/admin/competencias/${competencia.id}/simulacion`} className="font-medium text-gold underline">
-              Ir al ensayo
-            </Link>
-          </p>
+          <div className="typo-meta mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-gold/60 px-3 py-2">
+            <p>
+              Esta es una simulación: no es oficial y su puntuación no va al ranking.{' '}
+              <Link to={`/admin/competencias/${competencia.id}/simulacion`} className="font-medium text-gold underline">
+                Ir al ensayo
+              </Link>
+            </p>
+            <button
+              type="button"
+              className="typo-btn rounded-[10px] bg-gold px-4 py-2 text-bg"
+              onClick={() => {
+                const texto =
+                  '¿Cerrar la simulación? Se borra con sus categorías, votos y códigos de acceso. ' +
+                  'No queda como competencia ni como puntuación oficial. La competencia real no se toca.'
+                if (!window.confirm(texto)) return
+                setError(null)
+                cerrarSimulacion(competencia)
+                  .then((real) => navigate(real ? `/admin/competencias/${real}` : '/admin/competencias'))
+                  .catch((err: unknown) => setError(err instanceof Error ? err.message : 'No se pudo cerrar la simulación.'))
+              }}
+            >
+              Cerrar simulación
+            </button>
+          </div>
         ) : null}
         {error ? <p className="typo-meta mt-3 text-flag-red">{error}</p> : null}
       </div>
@@ -323,6 +344,8 @@ export function AdminCompetencia() {
         jueces={jueces}
         onCrear={(acceso) => hacer(() => crearAcceso(competencia.id, acceso))}
         onBorrar={(codigo) => hacer(() => borrarAcceso(codigo))}
+        onEstilo={(estilo) => hacer(() => cambiarEstiloJueces(competencia.id, estilo))}
+        onReasignar={(puesto, juez) => hacer(() => reasignarJuez(competencia.id, puesto, juez.codigo, juez.nombre))}
       />
 
       <section className="flex flex-wrap gap-3 border-t border-border pt-6">
@@ -566,14 +589,20 @@ function Accesos({
   jueces,
   onCrear,
   onBorrar,
+  onEstilo,
+  onReasignar,
 }: {
   detalle: DetalleCompetencia
   jueces: JuezCatalogo[]
   onCrear: (acceso: { rol: 'juez' | 'prepista' | 'mesa'; juezPuesto?: number; juezCodigo?: number; nombre?: string }) => Promise<void>
   onBorrar: (codigo: string) => Promise<void>
+  onEstilo: (estilo: 'numero' | 'letra') => Promise<void>
+  onReasignar: (puesto: number, juez: JuezCatalogo) => Promise<void>
 }) {
   const [juezCodigo, setJuezCodigo] = useState('')
+  const [cambiando, setCambiando] = useState<number | null>(null)
   const { accesos } = detalle
+  const estilo = detalle.competencia.etiquetaJueces
   const tiene = (rol: string) => accesos.some((a) => a.rol === rol)
   const puestoLibre = [1, 2, 3, 4, 5].find((puesto) => !accesos.some((a) => a.rol === 'juez' && a.juezPuesto === puesto))
 
@@ -584,6 +613,24 @@ function Accesos({
         Cada persona abre el enlace en su celular o tablet, o entra a /pista y escribe el código. No necesita cuenta.
         Los jueces solo ven números, nunca nombres.
       </p>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="typo-meta">Los jueces se llaman:</span>
+        {(['numero', 'letra'] as const).map((opcion) => (
+          <button
+            key={opcion}
+            type="button"
+            aria-pressed={estilo === opcion}
+            className={[
+              'typo-btn rounded-[10px] border px-3 py-1.5',
+              estilo === opcion ? 'border-gold bg-gold text-bg' : 'border-border',
+            ].join(' ')}
+            onClick={() => (estilo === opcion ? undefined : void onEstilo(opcion))}
+          >
+            {opcion === 'numero' ? '1 · 2 · 3' : 'A · B · C'}
+          </button>
+        ))}
+      </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {!tiene('mesa') ? (
@@ -623,7 +670,7 @@ function Accesos({
                 )
               }}
             >
-              + Juez {puestoLibre}
+              + Juez {etiquetaJuez(puestoLibre, estilo)}
             </button>
           </div>
         ) : null}
@@ -641,12 +688,46 @@ function Accesos({
             <li key={acceso.codigo} className="flex flex-wrap items-center justify-between gap-3 bg-bg/40 px-4 py-3">
               <div>
                 <p className="typo-name text-sm">
-                  {etiquetaAcceso(acceso.rol, acceso.juezPuesto)}
+                  {etiquetaAcceso(acceso.rol, acceso.juezPuesto, estilo)}
                   {acceso.nombre ? ` · ${formatNombre(acceso.nombre)}` : ''}
                 </p>
                 <p className="mt-1 font-mono text-lg tracking-[0.2em] text-gold">{acceso.codigo}</p>
+                {acceso.rol === 'juez' && acceso.juezPuesto != null && cambiando === acceso.juezPuesto ? (
+                  <select
+                    aria-label={`Nuevo juez para el puesto ${etiquetaJuez(acceso.juezPuesto, estilo)}`}
+                    defaultValue=""
+                    className="mt-2 rounded-[10px] border border-border bg-bg px-3 py-2 text-ink"
+                    onChange={(e) => {
+                      const juez = jueces.find((j) => String(j.codigo) === e.target.value)
+                      const puesto = acceso.juezPuesto!
+                      if (!juez) return
+                      const texto =
+                        `¿Poner a ${formatNombre(juez.nombre)} como Juez ${etiquetaJuez(puesto, estilo)}? ` +
+                        'Usa el mismo código de acceso; los votos que ya tenga este puesto se quedan.'
+                      if (window.confirm(texto)) void onReasignar(puesto, juez).then(() => setCambiando(null))
+                    }}
+                  >
+                    <option value="">Elegir el nuevo juez…</option>
+                    {jueces
+                      .filter((j) => !accesos.some((a) => a.rol === 'juez' && a.juezPuesto !== acceso.juezPuesto && a.nombre === j.nombre))
+                      .map((juez) => (
+                        <option key={juez.codigo} value={juez.codigo}>
+                          {formatNombre(juez.nombre)}
+                        </option>
+                      ))}
+                  </select>
+                ) : null}
               </div>
               <div className="flex items-center gap-3">
+                {acceso.rol === 'juez' && acceso.juezPuesto != null ? (
+                  <button
+                    type="button"
+                    className="typo-meta underline"
+                    onClick={() => setCambiando(cambiando === acceso.juezPuesto ? null : acceso.juezPuesto)}
+                  >
+                    {cambiando === acceso.juezPuesto ? 'Cancelar' : 'Cambiar juez'}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="typo-meta underline"
@@ -655,7 +736,7 @@ function Accesos({
                   Copiar enlace
                 </button>
                 <a
-                  href={enlaceWhatsApp(acceso, detalle.competencia.nombre)}
+                  href={enlaceWhatsApp(acceso, detalle.competencia.nombre, estilo)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="typo-meta font-medium text-gold underline"
@@ -667,7 +748,7 @@ function Accesos({
                   className="typo-meta text-muted underline"
                   onClick={() => {
                     const extra = acceso.rol === 'juez' ? ' Se borran también sus votos.' : ''
-                    if (window.confirm(`¿Quitar el código de ${etiquetaAcceso(acceso.rol, acceso.juezPuesto)}?${extra}`)) {
+                    if (window.confirm(`¿Quitar el código de ${etiquetaAcceso(acceso.rol, acceso.juezPuesto, estilo)}?${extra}`)) {
                       void onBorrar(acceso.codigo)
                     }
                   }}

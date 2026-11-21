@@ -6,6 +6,7 @@ import {
   EXCUSAS,
   estadoPista,
   etiquetaAcceso,
+  etiquetaJuez,
   etiquetaExcusa,
   etiquetaFase,
   faltantesParaFase,
@@ -28,6 +29,7 @@ import {
   type ClasePista,
   type EjemplarPista,
   type EstadoPista,
+  type EstiloJueces,
   type Excusa,
   type Fase,
 } from '../lib/competencia'
@@ -177,7 +179,7 @@ function Sala({ codigo, onSalir }: { codigo: string; onSalir: () => void }) {
         <header className="flex items-start justify-between gap-3 border-b border-border pb-4">
           <div>
             <p className="typo-eyebrow">
-              {etiquetaAcceso(estado.rol, estado.juezPuesto)}
+              {etiquetaAcceso(estado.rol, estado.juezPuesto, estiloDe(estado))}
               {estado.nombre ? ` · ${formatNombre(estado.nombre)}` : ''}
             </p>
             <h1 className="typo-section mt-1">{estado.competencia.nombre}</h1>
@@ -264,9 +266,14 @@ function enPista(item: EjemplarPista): boolean {
   return item.asistio !== false && !item.excusa
 }
 
+function estiloDe(estado: EstadoPista): EstiloJueces {
+  return estado.competencia.etiquetaJueces === 'letra' ? 'letra' : 'numero'
+}
+
 function nombreJuez(estado: EstadoPista, puesto: number): string {
   const nombre = estado.jueces.find((j) => j.puesto === puesto)?.nombre
-  return nombre ? `Juez ${puesto} · ${formatNombre(nombre)}` : `Juez ${puesto}`
+  const etiqueta = `Juez ${etiquetaJuez(puesto, estiloDe(estado))}`
+  return nombre ? `${etiqueta} · ${formatNombre(nombre)}` : etiqueta
 }
 
 function Boton({
@@ -804,7 +811,7 @@ function Mesa({
   ).sort((a, b) => (a.puesto ?? 99) - (b.puesto ?? 99) || a.numero - b.numero)
 
   function abrir(destino: Fase) {
-    const faltan = faltantesParaFase(clase, puestos, destino)
+    const faltan = faltantesParaFase(clase, puestos, destino, estiloDe(estado))
     if (faltan.length > 0) {
       setBloqueo({ fase: destino, faltan })
       return false
@@ -968,7 +975,7 @@ function Mesa({
                       type="button"
                       className="typo-meta underline"
                       onClick={() => {
-                        if (window.confirm(`¿Devolverle la votación al juez ${puesto} para que la corrija?`)) {
+                        if (window.confirm(`¿Devolverle la votación al juez ${etiquetaJuez(puesto, estiloDe(estado))} para que la corrija?`)) {
                           void hacer(() => pistaReabrirVotacion(codigo, clase.id, puesto))
                         }
                       }}
@@ -1027,7 +1034,10 @@ function Mesa({
                           <strong>
                             {jueces.length}/{puestos.length}
                           </strong>
-                          <span className="typo-meta block">J{jueces.sort((a, b) => a - b).join(', J')}</span>
+                          <span className="typo-meta block">{jueces
+                            .sort((a, b) => a - b)
+                            .map((p) => `J${etiquetaJuez(p, estiloDe(estado))}`)
+                            .join(', ')}</span>
                         </>
                       ) : (
                         '—'
@@ -1047,7 +1057,7 @@ function Mesa({
                       {excusas.length > 0 ? (
                         <span className="typo-meta block">
                           {excusas.length}/{puestos.length} votos:{' '}
-                          {excusas.map((v) => `J${v.juezPuesto} ${etiquetaExcusa(v.motivo).toLowerCase()}`).join(', ')}
+                          {excusas.map((v) => `J${etiquetaJuez(v.juezPuesto, estiloDe(estado))} ${etiquetaExcusa(v.motivo).toLowerCase()}`).join(', ')}
                         </span>
                       ) : item.excusa ? null : (
                         '—'
@@ -1070,7 +1080,7 @@ function Mesa({
       <section>
         <h2 className="typo-name text-lg">Hoja de cómputo</h2>
         <p className="typo-meta mt-1">Suma de los lugares de cada juez. La suma más baja queda primera.</p>
-        <TablaComputo computo={computo} puestos={puestos} />
+        <TablaComputo estilo={estiloDe(estado)} computo={computo} puestos={puestos} />
         {computo.length === 0 ? <p className="typo-meta mt-2">Todavía no hay ejemplares en el recorrido individual.</p> : null}
       </section>
     </div>
@@ -1120,10 +1130,12 @@ function TablaComputo({
   computo,
   puestos,
   impresa,
+  estilo = 'numero',
 }: {
   computo: ReturnType<typeof hojaDeComputo>
   puestos: number[]
   impresa?: boolean
+  estilo?: EstiloJueces
 }) {
   const celda = impresa ? CELDA_IMPRESA : 'px-3 py-2'
   return (
@@ -1134,7 +1146,7 @@ function TablaComputo({
             <th className={`${celda} text-left`}>No.</th>
             {puestos.map((p) => (
               <th key={p} className={celda}>
-                J{p}
+                J{etiquetaJuez(p, estilo)}
               </th>
             ))}
             <th className={celda}>Total</th>
@@ -1227,7 +1239,7 @@ function Acta({ clase, estado }: { clase: ClasePista; estado: EstadoPista }) {
       <TablaVotos clase={clase} estado={estado} impresa />
 
       <h2 className="mt-6 text-base font-bold">Hoja de cómputo</h2>
-      <TablaComputo computo={computo} puestos={puestos} impresa />
+      <TablaComputo estilo={estiloDe(estado)} computo={computo} puestos={puestos} impresa />
 
       <h2 className="mt-8 text-base font-bold">Firmas</h2>
       <div className="mt-6 grid grid-cols-2 gap-x-10 gap-y-12 text-sm">

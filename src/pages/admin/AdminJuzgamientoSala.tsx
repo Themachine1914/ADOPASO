@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/auth-context'
 import { hojaDeComputo, LEYENDA_F2, LUGARES_F2, LUGARES_PUESTO, SIN_VOTO, type LugarF2 } from '../../lib/computo'
+import { etiquetaJuez, type EstiloJueces } from '../../lib/competencia'
 import { formatFechaEmision, formatFechaRegistro, formatNombre } from '../../lib/format'
+
+/** Cómo se llaman los jueces en esta clase: 1, 2, 3 o A, B, C. */
+const EstiloJuecesCtx = createContext<EstiloJueces>('numero')
 import {
   agregarEjemplar,
   asignarJuez,
@@ -78,6 +82,7 @@ export function AdminJuzgamientoSala() {
   const escogidos = sala.ejemplares.filter((item) => item.escogido)
 
   return (
+    <EstiloJuecesCtx.Provider value={sala.estiloJueces}>
     <div className="space-y-8">
       <div>
         <Link to="/admin/juzgamiento" className="typo-meta font-medium text-gold hover:text-gold-soft">
@@ -174,6 +179,7 @@ export function AdminJuzgamientoSala() {
       />
       {error ? <p className="typo-meta text-flag-red">{error}</p> : null}
     </div>
+    </EstiloJuecesCtx.Provider>
   )
 }
 
@@ -337,6 +343,7 @@ function Jueces({
   juzgamientoId: string
   onChange: (accion: () => Promise<void>) => Promise<void>
 }) {
+  const estilo = useContext(EstiloJuecesCtx)
   const [codigo, setCodigo] = useState('')
   const ocupados = new Set(asignados.map((juez) => juez.juezCodigo))
   const siguiente = [1, 2, 3, 4, 5].find((puesto) => !asignados.some((juez) => juez.puesto === puesto))
@@ -349,7 +356,7 @@ function Jueces({
         {asignados.map((juez) => (
           <li key={juez.id} className="flex items-center justify-between gap-3 rounded-[10px] border border-border px-3 py-2">
             <span className="typo-name text-base">
-              Juez {juez.puesto} · {formatNombre(juez.nombre)}
+              Juez {etiquetaJuez(juez.puesto, estilo)} · {formatNombre(juez.nombre)}
             </span>
             <button
               type="button"
@@ -458,6 +465,7 @@ function FormatoF2({
   votos: SalaJuzgamiento['votos']
   onGuardar: (lugar: LugarF2, numero: number | null) => Promise<void>
 }) {
+  const estilo = useContext(EstiloJuecesCtx)
   const [aviso, setAviso] = useState<string | null>(null)
   const porLugar = new Map(votos.map((voto) => [voto.lugar, voto.ejemplarNumero]))
 
@@ -481,7 +489,7 @@ function FormatoF2({
       <div className="mt-3 space-y-1 text-sm">
         <p>Total ejemplares: <strong>{total}</strong></p>
         <p>Categoría: <strong className="uppercase">{categoria}</strong></p>
-        <p>Juez {juezPuesto}: <strong className="uppercase">{formatNombre(juezNombre)}</strong></p>
+        <p>Juez {etiquetaJuez(juezPuesto, estilo)}: <strong className="uppercase">{formatNombre(juezNombre)}</strong></p>
       </div>
       <table className="mt-4 w-full max-w-sm border-collapse text-sm">
         <tbody>
@@ -550,6 +558,7 @@ function Hoja({
   jueces: SalaJuzgamiento['jueces']
   filas: ReturnType<typeof hojaDeComputo>
 }) {
+  const estilo = useContext(EstiloJuecesCtx)
   const ordenadas = useMemo(
     () => [...filas].sort((a, b) => (a.puesto ?? 99) - (b.puesto ?? 99) || a.numero - b.numero),
     [filas],
@@ -568,7 +577,7 @@ function Hoja({
               <th className="border border-[#1c1408] px-2 py-2">No. ejemplar</th>
               {jueces.map((juez) => (
                 <th key={juez.id} className="border border-[#1c1408] px-2 py-2">
-                  Juez {juez.puesto}
+                  Juez {etiquetaJuez(juez.puesto, estilo)}
                 </th>
               ))}
               <th className="border border-[#1c1408] px-2 py-2">Total puntos</th>
