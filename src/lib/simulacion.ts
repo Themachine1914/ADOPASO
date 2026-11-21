@@ -606,6 +606,10 @@ export async function simularCategoria(detalle: DetalleCompetencia, claseId: str
       lugar: competencia.lugar ?? '',
       simulacion: true,
     })
+    if (competencia.etiquetaJueces === 'letra') {
+      const { error: errorEstilo } = await supabase.from('competencias').update({ etiqueta_jueces: 'letra' }).eq('id', id)
+      if (errorEstilo) throw errorEstilo
+    }
     await crearAcceso(id, { rol: 'mesa' })
     await crearAcceso(id, { rol: 'prepista' })
     // Los mismos jueces de la real, con su código del catálogo de jueces.

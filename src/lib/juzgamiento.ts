@@ -53,6 +53,8 @@ export interface EventoPrograma {
 }
 
 export interface SalaJuzgamiento {
+  /** 1, 2, 3 o A, B, C, según la competencia (las clases sueltas usan números). */
+  estiloJueces: 'numero' | 'letra'
   juzgamiento: Juzgamiento
   ejemplares: EjemplarClase[]
   jueces: JuezAsignado[]
@@ -151,7 +153,11 @@ export async function crearJuzgamiento(input: {
 
 export async function cargarSala(id: string): Promise<SalaJuzgamiento | null> {
   const [juzgamiento, ejemplares, jueces, votos] = await Promise.all([
-    supabase.from('juzgamientos').select('id, evento, fecha, lugar, categoria, codigo').eq('id', id).maybeSingle(),
+    supabase
+      .from('juzgamientos')
+      .select('id, evento, fecha, lugar, categoria, codigo, competencias (etiqueta_jueces)')
+      .eq('id', id)
+      .maybeSingle(),
     supabase.from('juzgamiento_ejemplares').select('*').eq('juzgamiento_id', id).order('numero'),
     supabase.from('juzgamiento_jueces').select('*').eq('juzgamiento_id', id).order('puesto'),
     supabase.from('juzgamiento_votos').select('*').eq('juzgamiento_id', id),
@@ -161,7 +167,9 @@ export async function cargarSala(id: string): Promise<SalaJuzgamiento | null> {
   if (ejemplares.error) throw ejemplares.error
   if (jueces.error) throw jueces.error
   if (votos.error) throw votos.error
+  const competencia = (juzgamiento.data as { competencias?: { etiqueta_jueces?: string } | null }).competencias
   return {
+    estiloJueces: competencia?.etiqueta_jueces === 'letra' ? 'letra' : 'numero',
     juzgamiento: mapJuzgamiento(juzgamiento.data),
     ejemplares: (ejemplares.data ?? []).map(mapEjemplar),
     jueces: (jueces.data ?? []).map((row) => ({
