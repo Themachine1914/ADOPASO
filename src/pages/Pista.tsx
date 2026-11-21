@@ -795,6 +795,17 @@ function Mesa({
   const lista = numerados(clase)
   const puestos = estado.jueces.map((j) => j.puesto)
   const fases = FASES.filter((f) => f.value !== 'inscripcion' && (clase.conFormatoA || f.value !== 'formato_a'))
+  const [verTodos, setVerTodos] = useState(false)
+  useEffect(() => setVerTodos(false), [clase.id])
+  // Cuando todos los jueces terminaron el Formato A (o ya pasó), la mesa ve solo a los elegidos.
+  const formatoAListo =
+    clase.fase === 'formato_a' && puestos.length > 0 && puestos.every((p) => juezFinalizo(clase, p, 'formato_a'))
+  const despuesDeFormatoA = clase.fase === 'individual' || clase.fase === 'votacion' || clase.fase === 'cerrada'
+  const elegido = (item: EjemplarPista) =>
+    despuesDeFormatoA ? item.escogido : item.escogido || clase.formatoA.some((m) => m.numero === item.numero)
+  const filtrar = formatoAListo || despuesDeFormatoA
+  const visibles = filtrar && !verTodos ? lista.filter(elegido) : lista
+  const ocultos = lista.length - lista.filter(elegido).length
   const sinVotos = clase.votos.length === 0 && clase.fase !== 'votacion' && clase.fase !== 'cerrada'
   const puedeHabilitar = !clase.conFormatoA && sinVotos
   const puedeQuitar =
@@ -1001,7 +1012,16 @@ function Mesa({
       </section>
 
       <section>
-        <h2 className="typo-name text-lg">Ejemplares</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="typo-name text-lg">
+            {filtrar && !verTodos ? (despuesDeFormatoA ? 'Ejemplares que pasaron' : 'Ejemplares elegidos en el Formato A') : 'Ejemplares'}
+          </h2>
+          {filtrar && ocultos > 0 ? (
+            <button type="button" className="typo-meta underline" onClick={() => setVerTodos(!verTodos)}>
+              {verTodos ? 'Ver solo los elegidos' : `Ver también los ${ocultos} no elegidos`}
+            </button>
+          ) : null}
+        </div>
         <div className="mt-3 overflow-x-auto rounded-[12px] border border-border">
           <table className="w-full min-w-[40rem] text-left text-sm">
             <thead className="typo-caption">
@@ -1015,7 +1035,7 @@ function Mesa({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {lista.map((item) => {
+              {visibles.map((item) => {
                 const jueces = clase.formatoA.filter((m) => m.numero === item.numero).map((m) => m.juezPuesto)
                 const excusas = clase.excusasVotos.filter((v) => v.numero === item.numero)
                 return (
