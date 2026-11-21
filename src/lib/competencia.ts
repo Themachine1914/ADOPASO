@@ -520,6 +520,12 @@ export async function deshacerSincronizacion(competenciaId: string): Promise<num
 }
 
 /** Cierra la inscripción: numera cada categoría del más adulto (1) al más joven. */
+/** Cierra una sola categoría: la numera por edad y la pasa a pre-pista. A los inscritos tarde les da el siguiente número libre. */
+export async function numerarCategoria(claseId: string): Promise<void> {
+  const { error } = await supabase.rpc('numerar_categoria', { p_clase: claseId })
+  if (error) throw error
+}
+
 export async function numerarCompetencia(competenciaId: string): Promise<void> {
   const { error } = await supabase.rpc('numerar_competencia', { p_competencia: competenciaId })
   if (error) throw error
@@ -594,6 +600,8 @@ export interface ClasePista {
   categoria: string
   orden: number | null
   fase: Fase
+  /** Falso cuando la mesa decidió que la categoría no lleva Formato A: pasan todos los presentes. */
+  conFormatoA: boolean
   ejemplares: EjemplarPista[]
   formatoA: Array<{ juezPuesto: number; numero: number }>
   votos: Array<{ juezPuesto: number; lugar: string; numero: number }>
@@ -641,7 +649,17 @@ export function faltantesParaFase(clase: ClasePista, jueces: number[], destino: 
     }
   }
 
-  if (hasta >= ORDEN_FASE.indexOf('individual')) {
+  if (destino === 'formato_a' && !clase.conFormatoA) {
+    faltan.push('Esta categoría no lleva Formato A. Si se eligió mal, pulse «Habilitar Formato A».')
+  }
+
+  if (hasta >= ORDEN_FASE.indexOf('individual') && !clase.conFormatoA) {
+    // Sin Formato A: al abrir el individual pasan todos los presentes. Solo falta tener jueces.
+    if (jueces.length === 0) faltan.push('La competencia no tiene jueces con código.')
+    if (actual < ORDEN_FASE.indexOf('individual') && !lista.some((item) => item.asistio === true && !item.excusa)) {
+      faltan.push('No hay ningún ejemplar confirmado en pre-pista.')
+    }
+  } else if (hasta >= ORDEN_FASE.indexOf('individual')) {
     if (jueces.length === 0) faltan.push('La competencia no tiene jueces con código.')
     for (const puesto of jueces) {
       if (!juezFinalizo(clase, puesto, 'formato_a')) {
@@ -720,6 +738,7 @@ export async function estadoPista(codigo: string): Promise<EstadoPista> {
     claseActiva: estado.claseActiva ?? null,
     clases: estado.clases.map((clase) => ({
       ...clase,
+      conFormatoA: clase.conFormatoA ?? true,
       excusasVotos: clase.excusasVotos ?? [],
       finalizados: clase.finalizados ?? [],
     })),
@@ -781,6 +800,18 @@ export async function pistaFinalizarVotacion(codigo: string, claseId: string): P
 
 export async function pistaReabrirVotacion(codigo: string, claseId: string, juezPuesto: number): Promise<void> {
   const { error } = await supabase.rpc('acceso_reabrir_votacion', { p_codigo: codigo, p_clase: claseId, p_juez: juezPuesto })
+  if (error) throw mensaje(error)
+}
+
+/** Pre-pista o mesa: reparte los números disponibles por edad (el menor al más adulto). */
+export async function pistaAsignarNumeros(codigo: string, claseId: string, numeros: number[]): Promise<void> {
+  const { error } = await supabase.rpc('acceso_asignar_numeros', { p_codigo: codigo, p_clase: claseId, p_numeros: numeros })
+  if (error) throw mensaje(error)
+}
+
+/** Mesa: la categoría en pista lleva o no Formato A. Se puede corregir mientras no haya marcas ni votos. */
+export async function pistaLlevaFormatoA(codigo: string, claseId: string, lleva: boolean): Promise<void> {
+  const { error } = await supabase.rpc('acceso_lleva_formato_a', { p_codigo: codigo, p_clase: claseId, p_lleva: lleva })
   if (error) throw mensaje(error)
 }
 

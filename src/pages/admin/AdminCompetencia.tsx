@@ -21,6 +21,7 @@ import {
   marcarPagado,
   montadorRepetido,
   moverInscripcion,
+  numerarCategoria,
   numerarCompetencia,
   quitarInscripcion,
   ultimoGrupo,
@@ -33,6 +34,7 @@ import {
 } from '../../lib/competencia'
 import { formatFechaEmision, formatNombre } from '../../lib/format'
 import { listarJueces, type JuezCatalogo } from '../../lib/juzgamiento'
+import { simularCategoria } from '../../lib/simulacion'
 import { ResultadosCompetencia } from './ResultadosCompetencia'
 import { SelectorBusqueda } from './SelectorBusqueda'
 
@@ -92,7 +94,9 @@ export function AdminCompetencia() {
 
   const { competencia, clases } = detalle
   const inscritos = clases.reduce((suma, clase) => suma + clase.inscritos.length, 0)
-  const sinNumero = clases.some((clase) => clase.inscritos.some((item) => item.numero == null))
+  const porCerrar = (clase: ClaseCompetencia) =>
+    clase.fase === 'inscripcion' || (clase.fase === 'prepista' && clase.inscritos.some((item) => item.numero == null))
+  const abiertas = clases.filter(porCerrar).length
   const finalizada = competencia.estado === 'finalizada'
 
   return (
@@ -137,21 +141,21 @@ export function AdminCompetencia() {
           <div>
             <h2 className="typo-section">Categorías e inscritos</h2>
             <p className="typo-meta mt-1">
-              Al cerrar la inscripción cada categoría se numera: el más adulto lleva el 1 y el más joven el número más alto.
+              Cierre cada categoría cuando termine su inscripción: se numera (el más adulto lleva el 1) y la mesa técnica
+              ya la puede sacar a pista. Las demás siguen abiertas. Un caballo inscrito tarde recibe el siguiente número
+              libre sin mover a los demás. La pre-pista puede cambiar los números antes de que juzguen.
             </p>
           </div>
-          {!finalizada && inscritos > 0 ? (
+          {!finalizada && abiertas > 0 ? (
             <button
               type="button"
-              className="typo-btn rounded-[10px] bg-gold px-4 py-2.5 text-bg"
+              className="typo-btn rounded-[10px] border border-border px-4 py-2.5"
               onClick={() => {
-                const texto = sinNumero
-                  ? '¿Cerrar la inscripción y numerar todas las categorías?'
-                  : '¿Volver a numerar? Los números actuales cambiarán.'
+                const texto = `¿Cerrar y numerar las ${abiertas} categorías abiertas? Las que ya están cerradas conservan sus números.`
                 if (window.confirm(texto)) void hacer(() => numerarCompetencia(competencia.id))
               }}
             >
-              {sinNumero ? 'Cerrar inscripción y numerar' : 'Volver a numerar'}
+              Cerrar todas las categorías ({abiertas})
             </button>
           ) : null}
         </div>
@@ -164,8 +168,48 @@ export function AdminCompetencia() {
               <div key={clase.id} className="overflow-hidden rounded-[12px] border border-border">
                 <div className="flex flex-wrap items-center justify-between gap-2 bg-surface px-4 py-3">
                   <p className="typo-name text-base">{clase.categoria}</p>
-                  <div className="flex items-center gap-3">
-                    <span className="typo-caption text-gold">{etiquetaFase(clase.fase)}</span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="typo-caption text-gold">
+                      {clase.fase === 'inscripcion' ? 'Inscripción abierta' : etiquetaFase(clase.fase)}
+                    </span>
+                    {!finalizada && porCerrar(clase) ? (
+                      <button
+                        type="button"
+                        className="typo-btn rounded-[10px] bg-gold px-3 py-1.5 text-sm text-bg"
+                        onClick={() => {
+                          const texto =
+                            clase.fase === 'inscripcion'
+                              ? `¿Cerrar la inscripción de ${clase.categoria} y numerarla? La mesa técnica la podrá sacar a pista.`
+                              : `¿Dar número a los inscritos tarde en ${clase.categoria}? Los demás conservan el suyo.`
+                          if (window.confirm(texto)) void hacer(() => numerarCategoria(clase.id))
+                        }}
+                      >
+                        {clase.fase === 'inscripcion' ? 'Cerrar y numerar' : 'Numerar los nuevos'}
+                      </button>
+                    ) : null}
+                    {!competencia.simulacion ? (
+                      <button
+                        type="button"
+                        className="typo-meta rounded-[10px] border border-gold/60 px-3 py-1 text-gold"
+                        title="Copia esta categoría a una competencia de práctica para hacer el paralelo"
+                        onClick={() => {
+                          const texto =
+                            `¿Hacer la simulación de ${clase.categoria}?\n\n` +
+                            'Se copia con los mismos caballos, montadores y números a una competencia de práctica, con sus ' +
+                            'propios códigos de mesa, pre-pista y jueces. La competencia real no se toca y la simulación no ' +
+                            'cuenta para el ranking.'
+                          if (!window.confirm(texto)) return
+                          let destino: string | null = null
+                          void hacer(async () => {
+                            destino = await simularCategoria(detalle, clase.id)
+                          }).then(() => {
+                            if (destino) navigate(`/admin/competencias/${destino}`)
+                          })
+                        }}
+                      >
+                        Simulación de competencia
+                      </button>
+                    ) : null}
                     <Link to={`/admin/juzgamiento/${clase.id}`} className="typo-meta underline">
                       Libretas y cómputo
                     </Link>
@@ -709,7 +753,7 @@ function EditarInscripcion({
           {!mueve ? (
             <span className="typo-meta mt-1 block">La categoría ya está en juzgamiento; no se puede cambiar.</span>
           ) : cambiaCategoria ? (
-            <span className="typo-meta mt-1 block">Queda sin número: vuelva a numerar después de guardar.</span>
+            <span className="typo-meta mt-1 block">Queda sin número: después de guardar, pulse «Numerar los nuevos» en su nueva categoría.</span>
           ) : null}
         </label>
         <div>
