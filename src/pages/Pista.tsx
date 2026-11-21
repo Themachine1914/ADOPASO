@@ -876,6 +876,37 @@ function Actas({ clases, onActa }: { clases: ClasePista[]; onActa: (id: string) 
   )
 }
 
+/** Todos los datos del ejemplar, como en el «Formulario Dirección de Eventos». */
+function DatosEjemplar({ item }: { item: EjemplarPista }) {
+  const sexo = item.sexo === 'H' ? 'Hembra' : item.sexo === 'M' ? 'Macho' : null
+  const linea = (partes: (string | null | undefined)[]) => partes.filter((p) => p && p.trim()).join(' · ')
+  const fila = (etiqueta: string, valor: string | null | undefined) =>
+    valor && valor.trim() ? (
+      <span className="block">
+        <span className="text-muted">{etiqueta}:</span> {valor}
+      </span>
+    ) : null
+  const registro = linea([item.registro, item.asociacion])
+  const nacimiento = linea([sexo, item.nacimiento ? `nació ${formatFechaEmision(item.nacimiento)}` : null])
+  const identificacion = linea([item.adn ? `ADN ${item.adn}` : null, item.microchip ? `Microchip ${item.microchip}` : null])
+  return (
+    <div className="min-w-[16rem]">
+      <span className="typo-name block text-sm">{formatNombre(item.nombre)}</span>
+      <span className="typo-meta block">
+        {registro ? <span className="block">{registro}</span> : null}
+        {nacimiento ? <span className="block">{nacimiento}</span> : null}
+        {identificacion ? <span className="block">{identificacion}</span> : null}
+        {fila('Padre', item.padre ? formatNombre(item.padre) : null)}
+        {fila('Madre', item.madre ? formatNombre(item.madre) : null)}
+        {fila('Abuelo materno', item.abueloMaterno ? formatNombre(item.abueloMaterno) : null)}
+        {fila('Criador', item.criador ? formatNombre(item.criador) : null)}
+        {fila('Propietario', item.propietario ? formatNombre(item.propietario) : null)}
+        {fila('Montador', item.montador ? formatNombre(item.montador) : 'Sin montador')}
+      </span>
+    </div>
+  )
+}
+
 function Mesa({
   clase,
   estado,
@@ -1139,8 +1170,7 @@ function Mesa({
                   <tr key={item.id} className={item.asistio === false || item.excusa ? 'opacity-50' : ''}>
                     <td className="px-3 py-2 font-display text-xl font-semibold text-gold">{item.numero}</td>
                     <td className="px-3 py-2">
-                      {formatNombre(item.nombre)}
-                      {item.montador ? <span className="typo-meta block">{formatNombre(item.montador)}</span> : null}
+                      <DatosEjemplar item={item} />
                     </td>
                     <td className="px-3 py-2">
                       {item.asistio === true ? 'Confirmado' : item.asistio === false ? 'No asistió' : '—'}

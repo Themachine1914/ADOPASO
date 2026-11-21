@@ -627,6 +627,15 @@ export interface EjemplarPista {
   escogido: boolean
   excusa: Excusa | null
   excusaFase?: 'formato_a' | 'final' | null
+  /** Datos del formulario de dirección de eventos (mesa y pre-pista). */
+  registro?: string | null
+  asociacion?: string | null
+  padre?: string | null
+  madre?: string | null
+  abueloMaterno?: string | null
+  criador?: string | null
+  adn?: string | null
+  microchip?: string | null
 }
 
 export interface ClasePista {
