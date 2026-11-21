@@ -538,3 +538,108 @@ export async function probarAccesos(detalle: DetalleCompetencia): Promise<Revisi
 
   return revisiones
 }
+
+// ---------------------------------------------------------------------------
+// Simulación de una sola categoría (paralelo de la competencia real)
+// ---------------------------------------------------------------------------
+
+/** Nombre de la competencia de práctica que acompaña a una competencia real. */
+export function nombreParalelo(nombre: string): string {
+  return `SIMULACIÓN · ${nombre}`
+}
+
+/**
+ * Copia una categoría de la competencia real a su competencia de práctica (simulación), con los
+ * mismos caballos, montadores y números. La primera vez crea la simulación con códigos nuevos para
+ * mesa técnica, pre-pista y los mismos jueces. La real no se toca y la simulación no se sincroniza
+ * al ranking. Devuelve el id de la simulación.
+ */
+export async function simularCategoria(detalle: DetalleCompetencia, claseId: string): Promise<string> {
+  const { competencia } = detalle
+  const clase = detalle.clases.find((c) => c.id === claseId)
+  if (!clase) throw new Error('La categoría no existe.')
+  if (competencia.simulacion) throw new Error('Esta competencia ya es una simulación.')
+
+  const nombre = nombreParalelo(competencia.nombre)
+  const buscada = await supabase
+    .from('competencias')
+    .select('id')
+    .eq('simulacion', true)
+    .eq('nombre', nombre)
+    .eq('fecha', competencia.fecha)
+    .neq('estado', 'finalizada')
+    .order('creado_en', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (buscada.error) throw buscada.error
+
+  let id = buscada.data ? String(buscada.data.id) : null
+  if (!id) {
+    id = await crearCompetencia({
+      programaCodigo: null,
+      nombre,
+      fecha: competencia.fecha,
+      lugar: competencia.lugar ?? '',
+      simulacion: true,
+    })
+    await crearAcceso(id, { rol: 'mesa' })
+    await crearAcceso(id, { rol: 'prepista' })
+    const jueces = detalle.accesos.filter((a) => a.rol === 'juez' && a.juezPuesto != null)
+    if (jueces.length > 0) {
+      for (const juez of jueces) {
+        await crearAcceso(id, { rol: 'juez', juezPuesto: juez.juezPuesto!, nombre: juez.nombre ?? undefined })
+      }
+    } else {
+      for (let puesto = 1; puesto <= JUECES_SIMULADOS; puesto += 1) {
+        await crearAcceso(id, { rol: 'juez', juezPuesto: puesto, nombre: `JUEZ DE PRUEBA ${puesto}` })
+      }
+    }
+  }
+
+  const repetida = await supabase
+    .from('juzgamientos')
+    .select('id')
+    .eq('competencia_id', id)
+    .eq('categoria', clase.categoria)
+    .maybeSingle()
+  if (repetida.error) throw repetida.error
+  if (repetida.data) return id
+
+  const origen = await supabase
+    .from('juzgamiento_ejemplares')
+    .select('numero, caballo_codigo, registro, asociacion, nombre, sexo, nacimiento, padre, madre, criador, propietario, montador, pagado')
+    .eq('juzgamiento_id', clase.id)
+  if (origen.error) throw origen.error
+  const filas = origen.data ?? []
+  if (filas.length === 0) throw new Error('La categoría no tiene caballos.')
+  // Con todos numerados, la simulación arranca cerrada para que la mesa la saque a pista enseguida.
+  const numerada = filas.every((f) => f.numero != null)
+
+  const nueva = await supabase
+    .from('juzgamientos')
+    .insert({
+      competencia_id: id,
+      evento_codigo: clase.eventoCodigo,
+      orden: clase.eventoCodigo,
+      evento: nombre,
+      fecha: competencia.fecha,
+      lugar: competencia.lugar,
+      categoria: clase.categoria,
+      codigo: clase.eventoCodigo != null ? String(clase.eventoCodigo) : null,
+      fase: numerada ? 'prepista' : 'inscripcion',
+    })
+    .select('id')
+    .single()
+  if (nueva.error) throw nueva.error
+
+  const { error } = await supabase
+    .from('juzgamiento_ejemplares')
+    .insert(filas.map((f) => ({ ...f, juzgamiento_id: nueva.data.id, escogido: false })))
+  if (error) throw error
+
+  if (numerada) {
+    const estado = await supabase.from('competencias').update({ estado: 'en_curso' }).eq('id', id).eq('estado', 'inscripcion')
+    if (estado.error) throw estado.error
+  }
+  return id
+}

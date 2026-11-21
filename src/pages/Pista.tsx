@@ -14,6 +14,7 @@ import {
   limpiarCodigo,
   MAXIMO_FORMATO_A,
   mayoriaJueces,
+  pistaAsignarNumeros,
   pistaAsistencia,
   pistaElegirClase,
   pistaEscoger,
@@ -21,6 +22,7 @@ import {
   pistaFase,
   pistaFinalizarVotacion,
   pistaFormatoA,
+  pistaLlevaFormatoA,
   pistaReabrirVotacion,
   pistaVotar,
   type ClasePista,
@@ -221,16 +223,27 @@ function Sala({ codigo, onSalir }: { codigo: string; onSalir: () => void }) {
                 ) : null}
                 <Actas clases={visibles} onActa={setActaId} />
               </div>
-            ) : enCurso ? (
-              <div className="mt-6">
-                {estado.rol === 'prepista' ? <PrePista clase={enCurso} codigo={codigo} hacer={hacer} /> : null}
-                {estado.rol === 'juez' ? <Juez clase={enCurso} estado={estado} codigo={codigo} hacer={hacer} /> : null}
-              </div>
             ) : (
-              <p className="typo-meta mt-8">
-                {activa ? 'Esta categoría ya se finalizó. Gracias. ' : ''}
-                Esperando a que la mesa técnica saque la siguiente categoría a pista. Esta pantalla se actualiza sola.
-              </p>
+              <>
+                {enCurso ? (
+                  <div className="mt-6">
+                    {estado.rol === 'prepista' ? <PrePista clase={enCurso} codigo={codigo} hacer={hacer} /> : null}
+                    {estado.rol === 'juez' ? <Juez clase={enCurso} estado={estado} codigo={codigo} hacer={hacer} /> : null}
+                  </div>
+                ) : (
+                  <p className="typo-meta mt-8">
+                    {activa ? 'Esta categoría ya se finalizó. Gracias. ' : ''}
+                    Esperando a que la mesa técnica saque la siguiente categoría a pista. Esta pantalla se actualiza sola.
+                  </p>
+                )}
+                {estado.rol === 'prepista' ? (
+                  <ProximasCategorias
+                    clases={visibles.filter((c) => c.fase === 'prepista' && c.id !== enCurso?.id)}
+                    codigo={codigo}
+                    hacer={hacer}
+                  />
+                ) : null}
+              </>
             )}
           </>
         )}
@@ -292,7 +305,8 @@ function PrePista({ clase, codigo, hacer }: { clase: ClasePista; codigo: string;
   const presentes = lista.filter((item) => item.asistio === true).length
   return (
     <section>
-      <h2 className="typo-name text-lg">Confirmar participantes</h2>
+      {clase.fase === 'prepista' ? <AsignarNumeros clase={clase} codigo={codigo} hacer={hacer} /> : null}
+      <h2 className="typo-name mt-6 text-lg">Confirmar participantes</h2>
       <p className="typo-meta mt-1">
         {presentes} de {lista.length} participantes confirmados.
         {abierta ? '' : ` La clase está en ${etiquetaFase(clase.fase).toLowerCase()}; ya no se confirma.`}
@@ -519,6 +533,137 @@ function Juez({ clase, estado, codigo, hacer }: { clase: ClasePista; estado: Est
   return <p className="typo-meta">La clase está en pre-pista. El formato A se abre cuando la mesa técnica lo indique.</p>
 }
 
+/** Orden por edad, igual que la base de datos: el más adulto primero; sin fecha, al final. */
+function porEdad(a: EjemplarPista, b: EjemplarPista): number {
+  if (a.nacimiento !== b.nacimiento) {
+    if (!a.nacimiento) return 1
+    if (!b.nacimiento) return -1
+    return a.nacimiento < b.nacimiento ? -1 : 1
+  }
+  const na = a.nombre ?? ''
+  const nb = b.nombre ?? ''
+  if (na !== nb) return na < nb ? -1 : 1
+  return (a.id ?? '') < (b.id ?? '') ? -1 : 1
+}
+
+/** "7, 12, 20-23" → [7, 12, 20, 21, 22, 23], ordenados y sin repetir. */
+function leerNumeros(texto: string): number[] {
+  const numeros = new Set<number>()
+  for (const parte of texto.split(/[\s,;]+/)) {
+    const rango = parte.match(/^(\d+)-(\d+)$/)
+    if (rango) {
+      const desde = Number(rango[1])
+      const hasta = Number(rango[2])
+      for (let n = Math.min(desde, hasta); n <= Math.max(desde, hasta) && numeros.size < 500; n++) numeros.add(n)
+    } else if (/^\d+$/.test(parte)) {
+      numeros.add(Number(parte))
+    }
+  }
+  return [...numeros].filter((n) => n > 0).sort((a, b) => a - b)
+}
+
+/** Pre-pista: categorías ya cerradas que todavía no salen a pista, para prepararles los números. */
+function ProximasCategorias({ clases, codigo, hacer }: { clases: ClasePista[]; codigo: string; hacer: Hacer }) {
+  if (clases.length === 0) return null
+  return (
+    <section className="mt-10 border-t border-border pt-6">
+      <h2 className="typo-name text-lg">Próximas categorías</h2>
+      <p className="typo-meta mt-1">
+        Ya cerradas, esperando pista. Puede asignarles números ahora; la mesa técnica los verá al sacarlas.
+      </p>
+      <ul className="mt-4 space-y-4">
+        {clases.map((clase) => (
+          <li key={clase.id} className="rounded-[12px] border border-border px-4 py-3">
+            <p className="typo-name text-base">{clase.categoria}</p>
+            <p className="typo-meta mt-1 mb-3">
+              {[...clase.ejemplares]
+                .sort((a, b) => (a.numero ?? 9999) - (b.numero ?? 9999))
+                .map((item) => `${item.numero ?? '—'} ${formatNombre(item.nombre)}`)
+                .join(' · ')}
+            </p>
+            <AsignarNumeros clase={clase} codigo={codigo} hacer={hacer} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function AsignarNumeros({ clase, codigo, hacer }: { clase: ClasePista; codigo: string; hacer: Hacer }) {
+  const [texto, setTexto] = useState('')
+  const [abierto, setAbierto] = useState(false)
+  useEffect(() => {
+    setTexto('')
+    setAbierto(false)
+  }, [clase.id])
+  const ordenados = [...clase.ejemplares].sort(porEdad)
+  const numeros = leerNumeros(texto)
+  const faltan = ordenados.length - numeros.length
+  if (!abierto) {
+    return (
+      <button
+        type="button"
+        className="typo-btn mb-2 rounded-[10px] border border-border px-4 py-2"
+        onClick={() => setAbierto(true)}
+      >
+        Asignar otros números
+      </button>
+    )
+  }
+  return (
+    <section className="mb-2 rounded-[12px] border border-gold/60 bg-surface p-4">
+      <h2 className="typo-name text-lg">Asignar números</h2>
+      <p className="typo-meta mt-1">
+        Escriba los {ordenados.length} números disponibles, separados por coma (también vale un rango, por ejemplo 20-25).
+        El número menor va al ejemplar más adulto. Solo se puede antes de que los jueces empiecen.
+      </p>
+      <input
+        aria-label="Números disponibles"
+        inputMode="numeric"
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder="Ej.: 7, 12, 15"
+        className="mt-3 w-full rounded-[10px] border border-border bg-bg px-3 py-3 text-ink"
+      />
+      <ul className="mt-3 divide-y divide-border rounded-[10px] border border-border">
+        {ordenados.map((item, i) => (
+          <li key={item.id} className="flex items-center gap-3 px-3 py-2">
+            <span className="w-10 text-center font-display text-xl font-semibold text-gold">{numeros[i] ?? '—'}</span>
+            <span className="typo-name text-sm">{formatNombre(item.nombre)}</span>
+            <span className="typo-meta ml-auto">
+              {item.nacimiento ? `nació ${item.nacimiento}` : 'sin fecha'}
+              {item.numero != null && numeros[i] !== item.numero ? ` · antes ${item.numero}` : ''}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="typo-meta mt-2">
+        {faltan > 0 ? `Faltan ${faltan} números.` : faltan < 0 ? `Sobran ${-faltan} números.` : 'Listo para guardar.'}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={faltan !== 0}
+          className="typo-btn rounded-[10px] bg-gold px-4 py-2 text-bg disabled:opacity-50"
+          onClick={() => {
+            if (!window.confirm(`¿Guardar los números ${numeros.join(', ')}? La mesa técnica los verá enseguida.`)) return
+            void hacer(async () => {
+              await pistaAsignarNumeros(codigo, clase.id, numeros)
+              setAbierto(false)
+              setTexto('')
+            })
+          }}
+        >
+          Guardar números
+        </button>
+        <button type="button" className="typo-btn rounded-[10px] border border-border px-4 py-2" onClick={() => setAbierto(false)}>
+          Cancelar
+        </button>
+      </div>
+    </section>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Mesa técnica
 // ---------------------------------------------------------------------------
@@ -526,7 +671,9 @@ function Juez({ clase, estado, codigo, hacer }: { clase: ClasePista; estado: Est
 function ElegirCategoria({ estado, codigo, hacer }: { estado: EstadoPista; codigo: string; hacer: Hacer }) {
   const pendientes = estado.clases.filter((clase) => clase.fase !== 'inscripcion' && clase.fase !== 'cerrada')
   const [elegida, setElegida] = useState('')
+  const [preguntar, setPreguntar] = useState(false)
   const valor = pendientes.some((c) => c.id === elegida) ? elegida : (pendientes[0]?.id ?? '')
+  const claseElegida = pendientes.find((c) => c.id === valor)
   if (pendientes.length === 0) {
     return <p className="typo-meta">No quedan categorías por juzgar.</p>
   }
@@ -540,7 +687,10 @@ function ElegirCategoria({ estado, codigo, hacer }: { estado: EstadoPista; codig
         <select
           aria-label="Categoría"
           value={valor}
-          onChange={(e) => setElegida(e.target.value)}
+          onChange={(e) => {
+            setElegida(e.target.value)
+            setPreguntar(false)
+          }}
           className="min-w-0 flex-1 rounded-[10px] border border-border bg-bg px-3 py-3 text-ink"
         >
           {pendientes.map((clase) => (
@@ -551,18 +701,53 @@ function ElegirCategoria({ estado, codigo, hacer }: { estado: EstadoPista; codig
         </select>
         <button
           type="button"
-          disabled={!valor}
+          disabled={!valor || preguntar}
           className="typo-btn rounded-[10px] bg-gold px-4 py-3 text-bg disabled:opacity-50"
-          onClick={() => {
-            const clase = pendientes.find((c) => c.id === valor)
-            if (clase && window.confirm(`¿Sacar a pista ${clase.categoria}?`)) {
-              void hacer(() => pistaElegirClase(codigo, clase.id))
-            }
-          }}
+          onClick={() => setPreguntar(true)}
         >
           Sacar a pista
         </button>
       </div>
+      {preguntar && claseElegida ? (
+        <div role="alertdialog" className="mt-4 rounded-[12px] border border-gold bg-bg p-4">
+          <p className="typo-name text-base">¿{claseElegida.categoria} lleva Formato A?</p>
+          <p className="typo-meta mt-1">
+            Sin Formato A, todos los ejemplares confirmados en pre-pista pasan directo al recorrido individual. Si se
+            equivoca, lo puede cambiar después mientras no haya votos.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="typo-btn rounded-[10px] bg-gold px-4 py-2 text-bg"
+              onClick={() =>
+                void hacer(async () => {
+                  await pistaElegirClase(codigo, claseElegida.id)
+                  await pistaLlevaFormatoA(codigo, claseElegida.id, true)
+                  setPreguntar(false)
+                })
+              }
+            >
+              Sí, lleva Formato A
+            </button>
+            <button
+              type="button"
+              className="typo-btn rounded-[10px] border border-gold px-4 py-2 text-gold"
+              onClick={() =>
+                void hacer(async () => {
+                  await pistaElegirClase(codigo, claseElegida.id)
+                  await pistaLlevaFormatoA(codigo, claseElegida.id, false)
+                  setPreguntar(false)
+                })
+              }
+            >
+              No, sin Formato A
+            </button>
+            <button type="button" className="typo-btn rounded-[10px] border border-border px-4 py-2" onClick={() => setPreguntar(false)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
@@ -602,7 +787,11 @@ function Mesa({
 }) {
   const lista = numerados(clase)
   const puestos = estado.jueces.map((j) => j.puesto)
-  const fases = FASES.filter((f) => f.value !== 'inscripcion')
+  const fases = FASES.filter((f) => f.value !== 'inscripcion' && (clase.conFormatoA || f.value !== 'formato_a'))
+  const sinVotos = clase.votos.length === 0 && clase.fase !== 'votacion' && clase.fase !== 'cerrada'
+  const puedeHabilitar = !clase.conFormatoA && sinVotos
+  const puedeQuitar =
+    clase.conFormatoA && sinVotos && clase.formatoA.length === 0 && (clase.fase === 'prepista' || clase.fase === 'formato_a')
   const [bloqueo, setBloqueo] = useState<{ fase: Fase; faltan: string[] } | null>(null)
   useEffect(() => setBloqueo(null), [clase.id, clase.fase])
   const escogen = clase.fase === 'formato_a' || clase.fase === 'individual'
@@ -642,7 +831,40 @@ function Mesa({
   return (
     <div className="space-y-8">
       <section>
-        <p className="typo-label">Fase de la categoría</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="typo-label">Fase de la categoría</p>
+          <p className="typo-caption">
+            {clase.conFormatoA ? 'Con Formato A' : 'Sin Formato A: pasan todos los confirmados'}
+            {puedeHabilitar ? (
+              <button
+                type="button"
+                className="ml-3 underline"
+                onClick={() => {
+                  const texto =
+                    clase.fase === 'individual'
+                      ? '¿Habilitar Formato A? La categoría vuelve al Formato A y los jueces escogen quién pasa.'
+                      : '¿Habilitar Formato A en esta categoría?'
+                  if (window.confirm(texto)) void hacer(() => pistaLlevaFormatoA(codigo, clase.id, true))
+                }}
+              >
+                Habilitar Formato A
+              </button>
+            ) : null}
+            {puedeQuitar ? (
+              <button
+                type="button"
+                className="ml-3 underline"
+                onClick={() => {
+                  if (window.confirm('¿Quitar el Formato A? Pasarán todos los confirmados en pre-pista.')) {
+                    void hacer(() => pistaLlevaFormatoA(codigo, clase.id, false))
+                  }
+                }}
+              >
+                Quitar Formato A
+              </button>
+            ) : null}
+          </p>
+        </div>
         <div className="mt-3 overflow-x-auto">
           <ol className="flex items-start">
             {fases.map((fase, indice) => {
