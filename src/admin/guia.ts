@@ -310,7 +310,7 @@ export const GUIA: CategoriaGuia[] = [
         respuesta:
           'Por persona (por puesto), no por categoría. Cada puesto recibe un solo enlace: uno para la pre-pista, uno para la mesa técnica y uno para cada juez. Con ese enlace la persona ve todas las categorías de la competencia y escoge la que está en pista en la lista «Categoría» de su pantalla.',
         pasos: [
-          'Pre-pista: ve el número y el nombre de cada caballo y marca «Participante confirmado» o «No asistió».',
+          'Pre-pista: ve el número y el nombre de cada caballo y marca «Confirmar participante» o «No asistió». El confirmado queda con un check amarillo; «No asistió» lo quita.',
           'Mesa técnica: ve todo, desde la asistencia y los votos de cada juez hasta quién pasa, las excusas y la hoja de cómputo.',
           'Cada juez: ve solo números, nunca nombres, y solo su propia libreta.',
         ],
@@ -338,7 +338,7 @@ export const GUIA: CategoriaGuia[] = [
       {
         pregunta: '¿Qué hace la pre-pista?',
         respuesta:
-          'Ve la lista de la categoría que está en pista con número y nombre, y marca «Participante confirmado» o «No asistió». El que no asistió queda fuera: los jueces no lo pueden marcar ni votar.',
+          'Ve la lista de la categoría que está en pista con número y nombre. «Confirmar participante» deja un check amarillo; «No asistió» lo quita y el caballo queda fuera: los jueces no lo pueden marcar ni votar.',
       },
       {
         pregunta: '¿Qué hacen los jueces?',
