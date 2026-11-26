@@ -8,6 +8,109 @@ import { cargarCaballo, cargarHistorialCaballo } from '../lib/publico'
 import { supabaseConfigurado } from '../lib/supabase'
 import type { CaballoPublico, ResultadoPublico } from '../types/publico'
 
+type DocumentoImpreso = 'certificado' | 'genealogia' | 'historial'
+
+function imprimirDocumento(documento: DocumentoImpreso) {
+  document.body.dataset.imprimir = documento
+  const limpiar = () => {
+    delete document.body.dataset.imprimir
+    window.removeEventListener('afterprint', limpiar)
+  }
+  window.addEventListener('afterprint', limpiar)
+  window.setTimeout(() => window.print(), 80)
+}
+
+function BotonImprimir({ documento, children }: { documento: DocumentoImpreso; children: string }) {
+  return (
+    <div className="no-imprimir mb-3 flex justify-end">
+      <button
+        type="button"
+        className="typo-btn rounded-[10px] border border-border bg-surface px-4 py-2 text-ink"
+        onClick={() => imprimirDocumento(documento)}
+      >
+        {children}
+      </button>
+    </div>
+  )
+}
+
+function HistorialImpreso({
+  horse,
+  filas,
+  anio,
+  puntos,
+}: {
+  horse: CaballoPublico
+  filas: ResultadoPublico[]
+  anio: number | null
+  puntos: number
+}) {
+  return (
+    <article className="solo-impresion-historial rounded-[18px] bg-[#f4efe4] p-1.5 text-[#1c1408]">
+      <div className="rounded-[14px] border-2 border-[#1c1408] p-1">
+        <div className="rounded-[10px] border border-[#1c1408] px-6 py-8">
+          <header className="text-center">
+            <img src="/logo-adopaso.png" alt="" className="mx-auto h-14 w-auto" />
+            <p className="mt-3 font-display text-lg leading-tight">
+              Asociación Dominicana de Caballos de Paso, Inc.
+            </p>
+            <h2 className="mt-4 font-display text-2xl font-semibold uppercase tracking-wide">
+              Historial de competencias
+            </h2>
+            <p className="mt-3 text-base">
+              <span className="font-semibold uppercase">{horse.nombre}</span>
+              {' · '}
+              {horse.codigo}
+            </p>
+            <p className="mt-1 text-sm uppercase tracking-wide">
+              {anio ? `Año ${anio}` : 'Todas las competencias'} · {formatPoints(puntos)} puntos
+            </p>
+          </header>
+
+          {filas.length === 0 ? (
+            <p className="mt-8 text-center text-sm">
+              Sin competencias registradas{anio ? ` en ${anio}` : ''}.
+            </p>
+          ) : (
+            <table className="mt-8 w-full border-collapse text-left text-sm">
+              <thead>
+                <tr>
+                  <th className="border-b border-[#1c1408] py-2 pr-3 font-semibold">Fecha</th>
+                  <th className="border-b border-[#1c1408] py-2 pr-3 font-semibold">Competencia</th>
+                  <th className="border-b border-[#1c1408] py-2 pr-3 font-semibold">Lugar</th>
+                  <th className="border-b border-[#1c1408] py-2 pr-3 text-right font-semibold">Puesto</th>
+                  <th className="border-b border-[#1c1408] py-2 text-right font-semibold">Puntos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filas.map((entry, index) => (
+                  <tr key={`${entry.fecha}-${entry.clase}-${index}`}>
+                    <td className="border-b border-[#1c1408]/25 py-2 pr-3 align-top">{formatDate(entry.fecha)}</td>
+                    <td className="border-b border-[#1c1408]/25 py-2 pr-3 align-top">
+                      {entry.clase || entry.tipo || 'Competencia'}
+                      {entry.campeon ? ' · Campeón' : ''}
+                    </td>
+                    <td className="border-b border-[#1c1408]/25 py-2 pr-3 align-top">
+                      {entry.lugar}
+                      {entry.tipo ? ` · ${entry.tipo}` : ''}
+                    </td>
+                    <td className="border-b border-[#1c1408]/25 py-2 pr-3 text-right align-top">
+                      {entry.puesto ? placeLabel(entry.puesto) : '—'}
+                    </td>
+                    <td className="border-b border-[#1c1408]/25 py-2 text-right align-top tabular-nums">
+                      {formatPoints(entry.puntos)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </article>
+  )
+}
+
 export function HorseDetail() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
@@ -81,7 +184,11 @@ export function HorseDetail() {
     return lista.reduce((sum, r) => sum + r.puntos, 0)
   }, [historial, yearParam])
 
-  const etiquetaAnio = Number.isFinite(yearParam) ? String(yearParam) : 'en total'
+  const anioSeleccionado = Number.isFinite(yearParam) ? yearParam : null
+  const etiquetaAnio = anioSeleccionado ? String(anioSeleccionado) : 'en total'
+  const historialImpreso = anioSeleccionado
+    ? historial.filter((entrada) => entrada.anio === anioSeleccionado)
+    : historial
 
   if (loading) {
     return (
@@ -105,7 +212,7 @@ export function HorseDetail() {
 
   return (
     <div>
-      <section className="border-b border-border bg-surface/30">
+      <section className="no-imprimir border-b border-border bg-surface/30">
         <div className="container-app py-10 md:py-14">
           <Link to="/ranking" className="typo-meta mb-4 inline-block font-medium transition-colors hover:text-gold">
             ← Volver al ranking
@@ -124,22 +231,38 @@ export function HorseDetail() {
       </section>
 
       <section className="container-app page-shell space-y-8">
-        {enRegistro ? (
-          <CertificadoRegistro horse={horse} />
-        ) : (
-          <div className="rounded-[12px] border border-border bg-surface px-6 py-8">
-            <p className="typo-name">Sin certificado en el libro de registro</p>
-            <p className="typo-meta mt-2">Este ejemplar aparece por sus resultados de competencia.</p>
-          </div>
-        )}
+        <div className="doc-certificado">
+          {enRegistro ? (
+            <>
+              <BotonImprimir documento="certificado">Imprimir certificado</BotonImprimir>
+              <CertificadoRegistro horse={horse} />
+            </>
+          ) : (
+            <div className="no-imprimir rounded-[12px] border border-border bg-surface px-6 py-8">
+              <p className="typo-name">Sin certificado en el libro de registro</p>
+              <p className="typo-meta mt-2">Este ejemplar aparece por sus resultados de competencia.</p>
+            </div>
+          )}
+        </div>
         {tieneGenealogia(horse) ? (
-          <Genealogia horseId={horse.codigo} columnas={generaciones(horse)} />
+          <div className="doc-genealogia">
+            <BotonImprimir documento="genealogia">Imprimir genealogía</BotonImprimir>
+            <Genealogia horseId={horse.codigo} columnas={generaciones(horse)} />
+          </div>
         ) : null}
       </section>
 
-      <section className="container-app page-shell">
-        <h2 className="typo-section">Historial de competencias</h2>
-        <p className="typo-meta mt-2">Resultados con puesto y puntos, de la más reciente a la más antigua.</p>
+      <section className="doc-historial container-app page-shell">
+        <div className="pantalla-historial">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="typo-section">Historial de competencias</h2>
+              <p className="typo-meta mt-2">Resultados con puesto y puntos, de la más reciente a la más antigua.</p>
+            </div>
+            <BotonImprimir documento="historial">
+              {anioSeleccionado ? `Imprimir historial ${anioSeleccionado}` : 'Imprimir historial'}
+            </BotonImprimir>
+          </div>
 
         {historial.length === 0 ? (
           <div className="mt-8 rounded-[12px] border border-border bg-surface px-6 py-10 text-center">
@@ -178,6 +301,13 @@ export function HorseDetail() {
             </div>
           </div>
         )}
+        </div>
+        <HistorialImpreso
+          horse={horse}
+          filas={historialImpreso}
+          anio={anioSeleccionado}
+          puntos={puntosAnio}
+        />
       </section>
     </div>
   )

@@ -78,13 +78,13 @@ export function Genealogia({ horseId, columnas }: { horseId: string; columnas: N
   return (
     <article className="rounded-[18px] bg-[#f4efe4] p-1.5 text-[#1c1408] shadow-[0_18px_50px_rgba(0,0,0,0.35)]">
       <div className="rounded-[14px] border-2 border-[#1c1408] p-1">
-        <div className="rounded-[10px] border border-[#1c1408] px-4 py-8 sm:px-8">
+        <div className="genealogia-cuerpo rounded-[10px] border border-[#1c1408] px-4 py-8 sm:px-8">
           <h2 className="text-center font-display text-2xl font-semibold tracking-[0.18em]">Genealogía</h2>
           <p className="mt-2 text-center text-xs text-[#5c5346]">
             Cuatro generaciones. Arriba la línea del padre y abajo la de la madre.
           </p>
 
-          <div className="mt-8 hidden h-[40rem] md:grid md:grid-cols-4 md:grid-rows-8 md:gap-x-6">
+          <div className="genealogia-rejilla mt-8 hidden h-[40rem] md:grid md:grid-cols-4 md:grid-rows-8 md:gap-x-6">
             <Celda nodo={columnas[0][0]} actual={horseId} column={1} row={1} span={8} />
             <Celda nodo={padre} actual={horseId} column={2} row={1} span={4} />
             <Celda nodo={madre} actual={horseId} column={2} row={5} span={4} />
@@ -102,7 +102,7 @@ export function Genealogia({ horseId, columnas }: { horseId: string; columnas: N
             <Celda nodo={mmabisa} actual={horseId} column={4} row={8} span={1} />
           </div>
 
-          <div className="mt-8 md:hidden">
+          <div className="genealogia-lista mt-8 md:hidden">
             <ul className="space-y-6">
               <Rama nodo={padre} actual={horseId}>
                 <Rama nodo={pabuelo} actual={horseId}>
