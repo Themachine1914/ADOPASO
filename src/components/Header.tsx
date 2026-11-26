@@ -13,7 +13,7 @@ export function Header() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/80 bg-bg/90 backdrop-blur-md">
+    <header className="no-imprimir sticky top-0 z-50 border-b border-border/80 bg-bg/90 backdrop-blur-md">
       <div className="container-app flex h-16 items-center justify-between gap-3 md:h-[4.5rem]">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link
