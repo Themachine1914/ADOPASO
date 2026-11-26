@@ -20,9 +20,12 @@ interface Categoria {
 export function ResultadosCompetencia({
   competencia,
   onCambio,
+  puedeEditar = true,
 }: {
   competencia: Competencia
   onCambio: () => Promise<void>
+  /** El rol consulta ve los resultados, pero no sincroniza ni deshace. */
+  puedeEditar?: boolean
 }) {
   const [filas, setFilas] = useState<ResultadoEjemplar[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -87,7 +90,7 @@ export function ResultadosCompetencia({
             puntos, 2.º 7 y 3.º 5, para el caballo, el propietario, el criador y el montador.
           </p>
         </div>
-        {sincronizada ? (
+        {!puedeEditar ? null : sincronizada ? (
           <button
             type="button"
             disabled={ocupado}

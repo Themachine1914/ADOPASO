@@ -17,13 +17,16 @@ export function AdminJuzgamiento() {
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
-  useEffect(() => {
-    if (perfil?.rol !== 'admin') return
-    listarJuzgamientos().then(setFilas).catch((err: Error) => setError(err.message))
-    listarPrograma().then(setPrograma).catch(() => setPrograma([]))
-  }, [perfil?.rol])
+  // El rol consulta ve las clases, pero no abre nuevas.
+  const puedeEditar = perfil?.rol === 'admin'
 
-  if (perfil?.rol !== 'admin') return <Navigate to="/admin" replace />
+  useEffect(() => {
+    if (!perfil?.activo) return
+    listarJuzgamientos().then(setFilas).catch((err: Error) => setError(err.message))
+    if (perfil.rol === 'admin') listarPrograma().then(setPrograma).catch(() => setPrograma([]))
+  }, [perfil?.activo, perfil?.rol])
+
+  if (!perfil?.activo) return <Navigate to="/admin" replace />
 
   async function crear(event: FormEvent) {
     event.preventDefault()
@@ -51,6 +54,9 @@ export function AdminJuzgamiento() {
         action={<AyudaGuia id="juzgamiento" />}
       />
 
+      {!puedeEditar && error ? <p className="typo-meta mb-4 text-flag-red">{error}</p> : null}
+
+      {puedeEditar ? (
       <form onSubmit={crear} className="mb-10 grid gap-3 rounded-[12px] border border-border bg-surface p-5 sm:grid-cols-2">
         <label className="sm:col-span-2">
           <span className="typo-label">Tomar del calendario</span>
@@ -93,6 +99,7 @@ export function AdminJuzgamiento() {
         </div>
         {error ? <p className="typo-meta text-flag-red sm:col-span-2">{error}</p> : null}
       </form>
+      ) : null}
 
       <div className="overflow-hidden rounded-[12px] border border-border">
         {filas.length === 0 ? (

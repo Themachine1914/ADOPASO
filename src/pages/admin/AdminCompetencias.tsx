@@ -25,14 +25,16 @@ export function AdminCompetencias() {
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [simulando, setSimulando] = useState<string | null>(null)
+  // El rol consulta ve las competencias, pero no crea ni simula.
+  const puedeEditar = perfil?.rol === 'admin'
 
   useEffect(() => {
-    if (perfil?.rol !== 'admin') return
+    if (!perfil?.activo) return
     listarCompetencias().then(setFilas).catch((err: Error) => setError(err.message))
-    listarPrograma().then(setPrograma).catch(() => setPrograma([]))
-  }, [perfil?.rol])
+    if (perfil.rol === 'admin') listarPrograma().then(setPrograma).catch(() => setPrograma([]))
+  }, [perfil?.activo, perfil?.rol])
 
-  if (perfil?.rol !== 'admin') return <Navigate to="/admin" replace />
+  if (!perfil?.activo) return <Navigate to="/admin" replace />
 
   async function crear(event: FormEvent) {
     event.preventDefault()
@@ -72,6 +74,7 @@ export function AdminCompetencias() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <AyudaGuia id="competencias-en-vivo" />
+            {puedeEditar ? (
             <button
               type="button"
               disabled={simulando != null}
@@ -80,16 +83,21 @@ export function AdminCompetencias() {
             >
               {simulando ? 'Creando simulación…' : 'Crear simulación de prueba'}
             </button>
+            ) : null}
           </div>
         }
       >
         {simulando ? <p className="typo-meta mt-3 text-gold">{simulando}</p> : null}
+        {puedeEditar ? (
         <p className="typo-meta mt-3">
           La simulación inscribe caballos reales del registro en una competencia de práctica con fecha de hoy, para
           ensayar los pasos y los accesos con el cliente. No cuenta para nada y se puede borrar.
         </p>
+        ) : null}
+        {!puedeEditar && error ? <p className="typo-meta mt-3 text-flag-red">{error}</p> : null}
       </PageHeader>
 
+      {puedeEditar ? (
       <form onSubmit={crear} className="mb-10 grid gap-3 rounded-[12px] border border-border bg-surface p-5 sm:grid-cols-2">
         <label className="sm:col-span-2">
           <span className="typo-label">Tomar del calendario</span>
@@ -131,6 +139,7 @@ export function AdminCompetencias() {
         </p>
         {error ? <p className="typo-meta text-flag-red sm:col-span-2">{error}</p> : null}
       </form>
+      ) : null}
 
       <div className="overflow-hidden rounded-[12px] border border-border">
         {filas.length === 0 ? (
@@ -140,7 +149,7 @@ export function AdminCompetencias() {
             {filas.map((fila) => (
               <li key={fila.id}>
                 <Link
-                  to={`/admin/competencias/${fila.id}${fila.simulacion ? '/simulacion' : ''}`}
+                  to={`/admin/competencias/${fila.id}${fila.simulacion && puedeEditar ? '/simulacion' : ''}`}
                   className="flex items-center justify-between gap-3 bg-bg/40 px-5 py-4 hover:bg-surface-elevated"
                 >
                   <div>

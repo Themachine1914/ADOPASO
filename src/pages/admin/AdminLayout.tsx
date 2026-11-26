@@ -70,7 +70,8 @@ export function AdminLayout() {
   }
 
   const esAdmin = perfil.rol === 'admin'
-  const visibles = CATEGORIAS.filter((c) => esAdmin || !c.soloAdmin)
+  // Todos los usuarios activos ven todas las secciones; solo el administrador cambia datos.
+  const visibles = CATEGORIAS
 
   const enlace = ({ isActive }: { isActive: boolean }) =>
     [
@@ -116,16 +117,12 @@ export function AdminLayout() {
           <NavLink to="/admin/guia" className={enlace}>
             Guía de uso
           </NavLink>
-          {esAdmin ? (
-            <>
-              <NavLink to="/admin/competencias" className={enlace}>
-                Competencias en vivo
-              </NavLink>
-              <NavLink to="/admin/juzgamiento" className={enlace}>
-                Juzgamiento
-              </NavLink>
-            </>
-          ) : null}
+          <NavLink to="/admin/competencias" className={enlace}>
+            Competencias en vivo
+          </NavLink>
+          <NavLink to="/admin/juzgamiento" className={enlace}>
+            Juzgamiento
+          </NavLink>
           {GRUPOS.map((grupo) => {
             const items = visibles.filter((c) => c.grupo === grupo)
             if (items.length === 0) return null
@@ -140,14 +137,12 @@ export function AdminLayout() {
               </div>
             )
           })}
-          {esAdmin ? (
-            <div className="mt-5">
-              <p className="typo-caption mb-1 px-3 uppercase tracking-[0.12em]">Sistema</p>
-              <NavLink to="/admin/usuarios" className={enlace}>
-                Usuarios y roles
-              </NavLink>
-            </div>
-          ) : null}
+          <div className="mt-5">
+            <p className="typo-caption mb-1 px-3 uppercase tracking-[0.12em]">Sistema</p>
+            <NavLink to="/admin/usuarios" className={enlace}>
+              Usuarios y roles
+            </NavLink>
+          </div>
         </nav>
 
         <main className="min-w-0">

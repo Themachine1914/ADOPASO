@@ -45,6 +45,8 @@ export function AdminJuzgamientoSala() {
   const [jueces, setJueces] = useState<JuezCatalogo[]>([])
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
+  // El rol consulta ve el formulario, las libretas y el cómputo, pero no cambia nada.
+  const puedeEditar = perfil?.rol === 'admin'
 
   async function recargar() {
     const datos = await cargarSala(id)
@@ -52,7 +54,7 @@ export function AdminJuzgamientoSala() {
   }
 
   useEffect(() => {
-    if (perfil?.rol !== 'admin' || !id) return
+    if (!perfil?.activo || !id) return
     let vigente = true
     setCargando(true)
     Promise.all([cargarSala(id), listarJueces()])
@@ -70,9 +72,9 @@ export function AdminJuzgamientoSala() {
     return () => {
       vigente = false
     }
-  }, [id, perfil?.rol])
+  }, [id, perfil?.activo])
 
-  if (perfil?.rol !== 'admin') return <Navigate to="/admin" replace />
+  if (!perfil?.activo) return <Navigate to="/admin" replace />
   if (cargando) return <p className="typo-meta">Cargando la clase…</p>
   if (error) return <p className="typo-meta text-flag-red">{error}</p>
   if (!sala) return <p className="typo-meta">Esta clase no está en el juzgamiento.</p>
@@ -96,6 +98,7 @@ export function AdminJuzgamientoSala() {
           {sala.juzgamiento.lugar ? ` · ${sala.juzgamiento.lugar}` : ''}
           {sala.juzgamiento.codigo ? ` · Código ${sala.juzgamiento.codigo}` : ''}
         </p>
+        {puedeEditar ? (
         <button
           type="button"
           className="typo-meta mt-3 text-muted underline"
@@ -107,9 +110,11 @@ export function AdminJuzgamientoSala() {
         >
           Eliminar clase
         </button>
+        ) : null}
       </div>
 
       <Formulario
+        puedeEditar={puedeEditar}
         juzgamientoId={sala.juzgamiento.id}
         ejemplares={sala.ejemplares}
         onChange={async (accion) => {
@@ -124,6 +129,7 @@ export function AdminJuzgamientoSala() {
       />
 
       <Jueces
+        puedeEditar={puedeEditar}
         asignados={sala.jueces}
         catalogo={jueces}
         onChange={async (accion) => {
@@ -138,6 +144,8 @@ export function AdminJuzgamientoSala() {
         juzgamientoId={sala.juzgamiento.id}
       />
 
+      {/* Sin permiso de edición las casillas quedan desactivadas: se ven, pero no se marcan. */}
+      <fieldset disabled={!puedeEditar} className="contents">
       <FormatoA
         ejemplares={sala.ejemplares}
         total={sala.ejemplares.length}
@@ -170,6 +178,7 @@ export function AdminJuzgamientoSala() {
           ))}
         </div>
       )}
+      </fieldset>
 
       <Hoja
         categoria={sala.juzgamiento.categoria}
@@ -204,10 +213,12 @@ function Papel({ titulo, formato, children }: { titulo: string; formato: string;
 }
 
 function Formulario({
+  puedeEditar,
   juzgamientoId,
   ejemplares,
   onChange,
 }: {
+  puedeEditar: boolean
   juzgamientoId: string
   ejemplares: EjemplarClase[]
   onChange: (accion: () => Promise<void>) => Promise<void>
@@ -244,6 +255,7 @@ function Formulario({
 
   return (
     <Papel titulo="Formulario dirección de eventos" formato="CLASE">
+      {puedeEditar ? (
       <form
         onSubmit={async (event) => {
           event.preventDefault()
@@ -289,6 +301,7 @@ function Formulario({
           Agregar ejemplar
         </button>
       </form>
+      ) : null}
       {aviso ? <p className="mb-3 text-sm">{aviso}</p> : null}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[64rem] border-collapse text-left text-xs">
@@ -316,15 +329,19 @@ function Formulario({
                 <td className="px-2 py-2">{item.propietario ? formatNombre(item.propietario) : ''}</td>
                 <td className="px-2 py-2">{item.montador ? formatNombre(item.montador) : ''}</td>
                 <td className="px-2 py-2">
-                  <button type="button" className="underline" onClick={() => onChange(() => quitarEjemplar(item.id))}>
-                    Quitar
-                  </button>
+                  {puedeEditar ? (
+                    <button type="button" className="underline" onClick={() => onChange(() => quitarEjemplar(item.id))}>
+                      Quitar
+                    </button>
+                  ) : null}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {ejemplares.length === 0 ? <p className="mt-3 text-sm">Agregue los ejemplares de la clase.</p> : null}
+        {ejemplares.length === 0 ? (
+          <p className="mt-3 text-sm">{puedeEditar ? 'Agregue los ejemplares de la clase.' : 'Esta clase no tiene ejemplares.'}</p>
+        ) : null}
       </div>
     </Papel>
   )
@@ -333,11 +350,13 @@ function Formulario({
 const campo = 'rounded-[8px] border border-[#1c1408]/40 bg-white px-2 py-2 text-sm text-[#1c1408]'
 
 function Jueces({
+  puedeEditar,
   asignados,
   catalogo,
   juzgamientoId,
   onChange,
 }: {
+  puedeEditar: boolean
   asignados: SalaJuzgamiento['jueces']
   catalogo: JuezCatalogo[]
   juzgamientoId: string
@@ -358,17 +377,21 @@ function Jueces({
             <span className="typo-name text-base">
               Juez {etiquetaJuez(juez.puesto, estilo)} · {formatNombre(juez.nombre)}
             </span>
-            <button
-              type="button"
-              className="typo-meta text-gold"
-              onClick={() => onChange(() => quitarJuez(juez.id, juzgamientoId, juez.puesto))}
-            >
-              Quitar
-            </button>
+            {puedeEditar ? (
+              <button
+                type="button"
+                className="typo-meta text-gold"
+                onClick={() => onChange(() => quitarJuez(juez.id, juzgamientoId, juez.puesto))}
+              >
+                Quitar
+              </button>
+            ) : null}
           </li>
         ))}
       </ul>
-      {siguiente ? (
+      {!puedeEditar ? (
+        asignados.length === 0 ? <p className="typo-meta mt-3">Esta clase no tiene jueces asignados.</p> : null
+      ) : siguiente ? (
         <form
           className="mt-4 flex flex-col gap-2 sm:flex-row"
           onSubmit={(event) => {

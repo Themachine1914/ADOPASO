@@ -56,6 +56,8 @@ export function AdminCompetencia() {
   const [error, setError] = useState<string | null>(null)
   const [editando, setEditando] = useState<string | null>(null)
   const [agregando, setAgregando] = useState<string | null>(null)
+  // El rol consulta ve la competencia completa, pero no cambia nada.
+  const puedeEditar = perfil?.rol === 'admin'
 
   async function recargar() {
     setDetalle(await cargarCompetencia(id))
@@ -72,7 +74,7 @@ export function AdminCompetencia() {
   }
 
   useEffect(() => {
-    if (perfil?.rol !== 'admin' || !id) return
+    if (!perfil?.activo || !id) return
     let vigente = true
     setCargando(true)
     Promise.all([cargarCompetencia(id), listarCatalogoCategorias(), listarJueces()])
@@ -91,9 +93,9 @@ export function AdminCompetencia() {
     return () => {
       vigente = false
     }
-  }, [id, perfil?.rol])
+  }, [id, perfil?.activo])
 
-  if (perfil?.rol !== 'admin') return <Navigate to="/admin" replace />
+  if (!perfil?.activo) return <Navigate to="/admin" replace />
   if (cargando) return <p className="typo-meta">Cargando la competencia…</p>
   if (!detalle) return <p className="typo-meta">{error ?? 'Esta competencia no existe.'}</p>
 
@@ -123,10 +125,13 @@ export function AdminCompetencia() {
           <div className="typo-meta mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-gold/60 px-3 py-2">
             <p>
               Esta es una simulación: no es oficial y su puntuación no va al ranking.{' '}
+              {puedeEditar ? (
               <Link to={`/admin/competencias/${competencia.id}/simulacion`} className="font-medium text-gold underline">
                 Ir al ensayo
               </Link>
+              ) : null}
             </p>
+            {puedeEditar ? (
             <button
               type="button"
               className="typo-btn rounded-[10px] bg-gold px-4 py-2 text-bg"
@@ -143,12 +148,13 @@ export function AdminCompetencia() {
             >
               Cerrar simulación
             </button>
+            ) : null}
           </div>
         ) : null}
         {error ? <p className="typo-meta mt-3 text-flag-red">{error}</p> : null}
       </div>
 
-      {!finalizada ? (
+      {!finalizada && puedeEditar ? (
         <Inscripcion
           fecha={competencia.fecha}
           catalogo={catalogo}
@@ -169,7 +175,7 @@ export function AdminCompetencia() {
               libre sin mover a los demás. La pre-pista puede cambiar los números antes de que juzguen.
             </p>
           </div>
-          {!finalizada && abiertas > 0 ? (
+          {puedeEditar && !finalizada && abiertas > 0 ? (
             <button
               type="button"
               className="typo-btn rounded-[10px] border border-border px-4 py-2.5"
@@ -191,7 +197,7 @@ export function AdminCompetencia() {
               // Se inscribe a última hora mientras la categoría no esté en juzgamiento.
               const categoriaClase = catalogo.find((c) => c.codigo === clase.eventoCodigo) ?? null
               const admiteInscripcion =
-                !finalizada && categoriaClase != null && (clase.fase === 'inscripcion' || clase.fase === 'prepista')
+                puedeEditar && !finalizada && categoriaClase != null && (clase.fase === 'inscripcion' || clase.fase === 'prepista')
               return (
               <div key={clase.id} className="overflow-hidden rounded-[12px] border border-border">
                 <div className="flex flex-wrap items-center justify-between gap-2 bg-surface px-4 py-3">
@@ -217,7 +223,7 @@ export function AdminCompetencia() {
                     <span className="typo-caption text-gold">
                       {clase.fase === 'inscripcion' ? 'Inscripción abierta' : etiquetaFase(clase.fase)}
                     </span>
-                    {!finalizada && porCerrar(clase) ? (
+                    {puedeEditar && !finalizada && porCerrar(clase) ? (
                       <button
                         type="button"
                         className="typo-btn rounded-[10px] bg-gold px-3 py-1.5 text-sm text-bg"
@@ -232,7 +238,7 @@ export function AdminCompetencia() {
                         {clase.fase === 'inscripcion' ? 'Cerrar y numerar' : 'Numerar los nuevos'}
                       </button>
                     ) : null}
-                    {!competencia.simulacion ? (
+                    {puedeEditar && !competencia.simulacion ? (
                       <button
                         type="button"
                         className="typo-meta rounded-[10px] border border-gold/60 px-3 py-1 text-gold"
@@ -323,12 +329,12 @@ export function AdminCompetencia() {
                             type="checkbox"
                             aria-label={`Pagó ${item.nombre}`}
                             checked={item.pagado}
-                            disabled={finalizada}
+                            disabled={finalizada || !puedeEditar}
                             onChange={(e) => void hacer(() => marcarPagado(item.id, e.target.checked))}
                           />
                         </td>
                         <td className="whitespace-nowrap px-4 py-2 text-right">
-                          {!finalizada ? (
+                          {puedeEditar && !finalizada ? (
                             <button
                               type="button"
                               className="typo-meta mr-3 underline"
@@ -337,7 +343,7 @@ export function AdminCompetencia() {
                               Editar
                             </button>
                           ) : null}
-                          {clase.fase === 'inscripcion' || clase.fase === 'prepista' ? (
+                          {puedeEditar && (clase.fase === 'inscripcion' || clase.fase === 'prepista') ? (
                             <button
                               type="button"
                               className="typo-meta underline"
@@ -354,7 +360,7 @@ export function AdminCompetencia() {
                       </tr>
                     )).flatMap((fila, indice) => {
                       const item = clase.inscritos[indice]
-                      if (editando !== item.id) return [fila]
+                      if (!puedeEditar || editando !== item.id) return [fila]
                       return [
                         fila,
                         <tr key={`${item.id}-editar`}>
@@ -390,8 +396,10 @@ export function AdminCompetencia() {
         )}
       </section>
 
-      <ResultadosCompetencia competencia={competencia} onCambio={recargar} />
+      <ResultadosCompetencia competencia={competencia} onCambio={recargar} puedeEditar={puedeEditar} />
 
+      {/* Los códigos de acceso dejan votar y numerar desde la pista: solo los ve el administrador. */}
+      {puedeEditar ? (
       <Accesos
         detalle={detalle}
         jueces={jueces}
@@ -400,9 +408,12 @@ export function AdminCompetencia() {
         onEstilo={(estilo) => hacer(() => cambiarEstiloJueces(competencia.id, estilo))}
         onReasignar={(puesto, juez) => hacer(() => reasignarJuez(competencia.id, puesto, juez.codigo, juez.nombre))}
       />
+      ) : null}
 
       <section className="flex flex-wrap gap-3 border-t border-border pt-6">
-        {!finalizada ? (
+        {!finalizada && !puedeEditar ? (
+          <p className="typo-meta">Competencia en curso.</p>
+        ) : !finalizada ? (
           <button
             type="button"
             className="typo-btn rounded-[10px] border border-border px-4 py-2.5"
@@ -418,7 +429,7 @@ export function AdminCompetencia() {
           <p className="typo-meta">Competencia finalizada. Los códigos ya no funcionan.</p>
         )}
         {/* Una competencia ya sincronizada no se borra: primero hay que deshacer la sincronización. */}
-        {!competencia.sincronizadoEn ? (
+        {puedeEditar && !competencia.sincronizadoEn ? (
           <button
             type="button"
             className="typo-meta text-muted underline"

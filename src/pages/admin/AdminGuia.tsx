@@ -68,7 +68,8 @@ export function AdminGuia() {
   const busqueda = useDeferredValue(texto)
   const esAdmin = perfil?.rol === 'admin'
 
-  const categorias = useMemo(() => GUIA.filter((c) => esAdmin || !c.soloAdmin), [esAdmin])
+  // Todos ven toda la guía; las secciones marcadas las cambia solo el administrador.
+  const categorias = GUIA
 
   const resultados = useMemo(() => {
     if (!busqueda.trim()) return categorias
@@ -137,7 +138,7 @@ export function AdminGuia() {
             <h2 className="typo-section text-xl">{c.titulo}</h2>
             <p className="typo-meta mt-1">
               {c.resumen}
-              {c.soloAdmin ? ' · Solo administradores.' : ''}
+              {c.soloAdmin && !esAdmin ? ' · Usted la puede ver; los cambios los hace un administrador.' : ''}
             </p>
             <ul className="mt-4 divide-y divide-border overflow-hidden rounded-[12px] border border-border bg-bg/40">
               {c.articulos.map((a) => (

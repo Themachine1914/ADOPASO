@@ -8,7 +8,8 @@ import { supabase } from '../../lib/supabase'
 export function AdminInicio() {
   const { perfil } = useAuth()
   const esAdmin = perfil?.rol === 'admin'
-  const visibles = CATEGORIAS.filter((c) => esAdmin || !c.soloAdmin)
+  // Todos los usuarios activos ven todas las secciones; solo el administrador cambia datos.
+  const visibles = CATEGORIAS
   const [conteos, setConteos] = useState<Record<string, number | null>>({})
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function AdminInicio() {
         title="Resumen de datos"
         description="Todos los datos históricos organizados por categoría. Elija una para consultarla."
       />
-      {esAdmin ? (
+      {perfil?.activo ? (
         <Link
           to="/admin/juzgamiento"
           className="mb-10 block rounded-[12px] border border-gold/40 bg-surface p-5 transition-colors hover:bg-surface-elevated"

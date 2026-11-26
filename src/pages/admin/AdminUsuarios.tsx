@@ -27,7 +27,9 @@ export function AdminUsuarios() {
     }
   }, [])
 
-  if (perfil?.rol !== 'admin') return <Navigate to="/admin" replace />
+  if (!perfil?.activo) return <Navigate to="/admin" replace />
+  // El rol consulta ve la lista de usuarios, pero no activa ni cambia roles.
+  const puedeEditar = perfil.rol === 'admin'
 
   async function cambiar(usuario: Perfil, cambios: Partial<Pick<Perfil, 'rol' | 'activo'>>) {
     setError(null)
@@ -44,7 +46,11 @@ export function AdminUsuarios() {
       <PageHeader
         eyebrow="Sistema"
         title="Usuarios y roles"
-        description="Los usuarios se crean en Supabase (Authentication → Users). Aquí se activan y se les asigna el rol."
+        description={
+          puedeEditar
+            ? 'Los usuarios se crean en Supabase (Authentication → Users). Aquí se activan y se les asigna el rol.'
+            : 'Lista de usuarios con su rol. Solo un administrador puede activarlos o cambiarles el rol.'
+        }
         action={<AyudaGuia id="usuarios" />}
       />
       <div className="typo-meta mb-6 rounded-[12px] border border-border bg-surface p-4">
@@ -52,7 +58,8 @@ export function AdminUsuarios() {
           <strong className="text-ink">Administrador:</strong> ve y modifica todo, incluidos los datos personales.
         </p>
         <p className="mt-1">
-          <strong className="text-ink">Consulta:</strong> solo lee caballos, resultados, calendario y categorías.
+          <strong className="text-ink">Consulta:</strong> ve todo, incluidos los datos personales y las competencias, pero
+          no cambia nada. No ve los códigos de acceso de jueces, pre-pista y mesa técnica.
         </p>
       </div>
 
@@ -86,7 +93,7 @@ export function AdminUsuarios() {
                     <td className="px-4 py-3">
                       <select
                         value={u.rol}
-                        disabled={esYo}
+                        disabled={esYo || !puedeEditar}
                         onChange={(e) => cambiar(u, { rol: e.target.value as Rol })}
                         aria-label={`Rol de ${u.email}`}
                         className="typo-meta rounded-[10px] border border-border bg-surface px-2 py-1.5 text-ink disabled:opacity-50"
@@ -99,7 +106,7 @@ export function AdminUsuarios() {
                       <input
                         type="checkbox"
                         checked={u.activo}
-                        disabled={esYo}
+                        disabled={esYo || !puedeEditar}
                         onChange={(e) => cambiar(u, { activo: e.target.checked })}
                         aria-label={`Activar a ${u.email}`}
                         className="h-4 w-4 accent-[#d4af37]"

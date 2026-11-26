@@ -18,12 +18,12 @@ const ANIOS = Array.from({ length: 2026 - 1998 + 1 }, (_, i) => 2026 - i)
 
 type Fila = Record<string, unknown>
 
-/** Ruta /admin/:slug — valida que la categoría exista y que el rol pueda verla. */
+/** Ruta /admin/:slug — valida que la categoría exista. Todos la ven; solo el administrador la edita. */
 export function AdminCategoria() {
   const { slug } = useParams()
   const { perfil } = useAuth()
   const categoria = categoriaPorSlug(slug)
-  if (!categoria || (categoria.soloAdmin && perfil?.rol !== 'admin')) {
+  if (!categoria) {
     return <Navigate to="/admin" replace />
   }
   // key: al cambiar de categoría se reinician búsqueda, página y filtros.
