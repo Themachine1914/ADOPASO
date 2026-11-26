@@ -563,7 +563,7 @@ function normalizar(valor: string | null | undefined): string {
 /**
  * Qué tan cerca está el caballo de lo que se buscó (menor = más arriba):
  * 0 código exacto · 1 nombre exacto · 2 nombre que empieza así · 3 la palabra dentro del nombre ·
- * 4 el texto dentro del nombre o del código · 5 es su padre o su madre · 6 expositor o criador.
+ * 4 el texto dentro del nombre o del código · 5 es hijo del caballo buscado (por padre o madre).
  */
 export function relevanciaCaballo(caballo: CaballoPublico, query: string): number {
   const t = normalizar(query)
@@ -574,11 +574,10 @@ export function relevanciaCaballo(caballo: CaballoPublico, query: string): numbe
   if (nombre.startsWith(t)) return 2
   if (` ${nombre} `.includes(` ${t} `)) return 3
   if (nombre.includes(t) || codigo.includes(t)) return 4
-  if (normalizar(caballo.padre).includes(t) || normalizar(caballo.madre).includes(t)) return 5
-  return 6
+  return 5
 }
 
-/** A partir de esta relevancia el resultado es «relacionado» (hijo, expositor, criador), no el caballo buscado. */
+/** A partir de esta relevancia el resultado es un hijo del caballo buscado, no el caballo mismo. */
 export const RELEVANCIA_RELACIONADO = 5
 
 export async function buscarCaballos(query: string): Promise<CaballoPublico[]> {
@@ -595,8 +594,8 @@ export async function buscarCaballos(query: string): Promise<CaballoPublico[]> {
 
   const like = `%${termino}%`
   // Tres consultas para que el caballo buscado nunca quede fuera por el tope de resultados:
-  // el nombre o código exacto, los que lo llevan en el nombre o el código, y los relacionados.
-  const [exacto, enNombre, relacionados] = await Promise.all([
+  // el nombre o código exacto, los que lo llevan en el nombre o el código, y sus hijos (por padre o madre).
+  const [exacto, enNombre, hijos] = await Promise.all([
     supabase
       .from('caballo_publico')
       .select(CAMPOS_CABALLO)
@@ -611,15 +610,15 @@ export async function buscarCaballos(query: string): Promise<CaballoPublico[]> {
     supabase
       .from('caballo_publico')
       .select(CAMPOS_CABALLO)
-      .or(`padre.ilike."${like}",madre.ilike."${like}",expositor.ilike."${like}",criador.ilike."${like}"`)
+      .or(`padre.ilike."${like}",madre.ilike."${like}"`)
       .order('nombre', { ascending: true })
       .limit(LIMITE_BUSQUEDA),
   ])
-  const fallo = exacto.error ?? enNombre.error ?? relacionados.error
+  const fallo = exacto.error ?? enNombre.error ?? hijos.error
   if (fallo) throw fallo
 
   const vistos = new Map<string, CaballoPublico>()
-  for (const fila of [...(exacto.data ?? []), ...(enNombre.data ?? []), ...(relacionados.data ?? [])]) {
+  for (const fila of [...(exacto.data ?? []), ...(enNombre.data ?? []), ...(hijos.data ?? [])]) {
     const caballo = mapCaballo(fila)
     if (!vistos.has(caballo.codigo)) vistos.set(caballo.codigo, caballo)
   }
