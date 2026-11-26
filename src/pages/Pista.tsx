@@ -894,24 +894,17 @@ function DatosEjemplar({ item, fecha }: { item: EjemplarPista; fecha: string }) 
     item.nacimiento ? `nació ${formatFechaEmision(item.nacimiento)}` : null,
     meses != null ? `${meses} meses` : null,
   ])
-  const asociacion = linea([item.asociacion, item.adn ? `ADN ${item.adn}` : null])
-  const identificacion = linea([
-    item.registro ? `Registro ${item.registro}` : null,
-    item.microchip ? `Microchip ${item.microchip}` : null,
-  ])
   return (
     <div className="min-w-[16rem]">
       <span className="typo-name block text-sm">{formatNombre(item.nombre)}</span>
       <span className="typo-meta block">
         {nacimiento ? <span className="block">{nacimiento}</span> : null}
-        {asociacion ? <span className="block">{asociacion}</span> : null}
         {fila('Padre', item.padre ? formatNombre(item.padre) : null)}
         {fila('Madre', item.madre ? formatNombre(item.madre) : null)}
         {fila('Abuelo materno', item.abueloMaterno ? formatNombre(item.abueloMaterno) : null)}
         {fila('Criador', item.criador ? formatNombre(item.criador) : null)}
         {fila('Propietario', item.propietario ? formatNombre(item.propietario) : null)}
         {fila('Montador', item.montador ? formatNombre(item.montador) : 'Sin montador')}
-        {identificacion ? <span className="block">{identificacion}</span> : null}
       </span>
     </div>
   )
