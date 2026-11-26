@@ -7,6 +7,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { SearchInput } from '../../components/SearchInput'
 import { Skeleton } from '../../components/Skeleton'
 import { useAuth } from '../../lib/auth-context'
+import { ImpresionRegistroAdmin } from '../../components/ImpresionFicha'
 import { FormularioRegistro } from './FormularioRegistro'
 import { describirAncestros } from '../../lib/genealogia'
 import { formatDate } from '../../lib/format'
@@ -276,6 +277,7 @@ function VistaCategoria({ categoria, esAdmin }: { categoria: Categoria; esAdmin:
                 }
               : undefined
           }
+          esCaballo={categoria.tabla === 'caballos'}
         />
       ) : null}
 
@@ -307,12 +309,14 @@ function Detalle({
   onCerrar,
   onEditar,
   onEliminar,
+  esCaballo,
 }: {
   fila: Fila
   titulo: string
   onCerrar: () => void
   onEditar?: () => void
   onEliminar?: () => Promise<void>
+  esCaballo?: boolean
 }) {
   const [errorBorrar, setErrorBorrar] = useState<string | null>(null)
   useEffect(() => {
@@ -370,6 +374,11 @@ function Detalle({
                 Eliminar
               </button>
             ) : null}
+            {esCaballo ? <ImpresionRegistroAdmin fila={fila} /> : null}
+          </div>
+        ) : esCaballo ? (
+          <div className="mb-5 flex flex-wrap gap-2">
+            <ImpresionRegistroAdmin fila={fila} />
           </div>
         ) : null}
         {errorBorrar ? (

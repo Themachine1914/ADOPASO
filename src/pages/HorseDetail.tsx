@@ -2,11 +2,26 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { CertificadoRegistro } from '../components/CertificadoRegistro'
 import { Genealogia } from '../components/Genealogia'
+import { BotonImprimir, HistorialImpreso } from '../components/ImpresionFicha'
+import type { DocumentoImpreso } from '../lib/impresion'
 import { formatDate, formatPoints, placeLabel } from '../lib/format'
 import { generaciones, tieneGenealogia } from '../lib/genealogia'
 import { cargarCaballo, cargarHistorialCaballo } from '../lib/publico'
 import { supabaseConfigurado } from '../lib/supabase'
 import type { CaballoPublico, ResultadoPublico } from '../types/publico'
+
+function BotonFicha({ documento, children }: { documento: DocumentoImpreso; children: string }) {
+  return (
+    <div className="no-imprimir mb-3 flex justify-end">
+      <BotonImprimir
+        documento={documento}
+        className="typo-btn rounded-[10px] border border-border bg-surface px-4 py-2 text-ink"
+      >
+        {children}
+      </BotonImprimir>
+    </div>
+  )
+}
 
 export function HorseDetail() {
   const { id } = useParams()
@@ -81,7 +96,11 @@ export function HorseDetail() {
     return lista.reduce((sum, r) => sum + r.puntos, 0)
   }, [historial, yearParam])
 
-  const etiquetaAnio = Number.isFinite(yearParam) ? String(yearParam) : 'en total'
+  const anioSeleccionado = Number.isFinite(yearParam) ? yearParam : null
+  const etiquetaAnio = anioSeleccionado ? String(anioSeleccionado) : 'en total'
+  const historialImpreso = anioSeleccionado
+    ? historial.filter((entrada) => entrada.anio === anioSeleccionado)
+    : historial
 
   if (loading) {
     return (
@@ -105,7 +124,7 @@ export function HorseDetail() {
 
   return (
     <div>
-      <section className="border-b border-border bg-surface/30">
+      <section className="no-imprimir border-b border-border bg-surface/30">
         <div className="container-app py-10 md:py-14">
           <Link to="/ranking" className="typo-meta mb-4 inline-block font-medium transition-colors hover:text-gold">
             ← Volver al ranking
@@ -124,22 +143,38 @@ export function HorseDetail() {
       </section>
 
       <section className="container-app page-shell space-y-8">
-        {enRegistro ? (
-          <CertificadoRegistro horse={horse} />
-        ) : (
-          <div className="rounded-[12px] border border-border bg-surface px-6 py-8">
-            <p className="typo-name">Sin certificado en el libro de registro</p>
-            <p className="typo-meta mt-2">Este ejemplar aparece por sus resultados de competencia.</p>
-          </div>
-        )}
+        <div className="doc-certificado">
+          {enRegistro ? (
+            <>
+              <BotonFicha documento="certificado">Imprimir certificado</BotonFicha>
+              <CertificadoRegistro horse={horse} />
+            </>
+          ) : (
+            <div className="no-imprimir rounded-[12px] border border-border bg-surface px-6 py-8">
+              <p className="typo-name">Sin certificado en el libro de registro</p>
+              <p className="typo-meta mt-2">Este ejemplar aparece por sus resultados de competencia.</p>
+            </div>
+          )}
+        </div>
         {tieneGenealogia(horse) ? (
-          <Genealogia horseId={horse.codigo} columnas={generaciones(horse)} />
+          <div className="doc-genealogia">
+            <BotonFicha documento="genealogia">Imprimir genealogía</BotonFicha>
+            <Genealogia horseId={horse.codigo} columnas={generaciones(horse)} />
+          </div>
         ) : null}
       </section>
 
-      <section className="container-app page-shell">
-        <h2 className="typo-section">Historial de competencias</h2>
-        <p className="typo-meta mt-2">Resultados con puesto y puntos, de la más reciente a la más antigua.</p>
+      <section className="doc-historial container-app page-shell">
+        <div className="pantalla-historial">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="typo-section">Historial de competencias</h2>
+              <p className="typo-meta mt-2">Resultados con puesto y puntos, de la más reciente a la más antigua.</p>
+            </div>
+            <BotonFicha documento="historial">
+              {anioSeleccionado ? `Imprimir historial ${anioSeleccionado}` : 'Imprimir historial'}
+            </BotonFicha>
+          </div>
 
         {historial.length === 0 ? (
           <div className="mt-8 rounded-[12px] border border-border bg-surface px-6 py-10 text-center">
@@ -178,6 +213,13 @@ export function HorseDetail() {
             </div>
           </div>
         )}
+        </div>
+        <HistorialImpreso
+          horse={horse}
+          filas={historialImpreso}
+          anio={anioSeleccionado}
+          puntos={puntosAnio}
+        />
       </section>
     </div>
   )

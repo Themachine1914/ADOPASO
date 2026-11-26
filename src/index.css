@@ -248,6 +248,119 @@
   }
 }
 
+.solo-impresion-historial,
+.hoja-admin {
+  display: none;
+}
+
+@media print {
+  body[data-imprimir] {
+    background: #fff !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body[data-imprimir] #root,
+  body[data-imprimir] #root > div,
+  body[data-imprimir] main {
+    display: block !important;
+    background: #fff !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body[data-imprimir-origen='admin'] #root {
+    display: none !important;
+  }
+
+  body[data-imprimir='certificado'] .hoja-admin.doc-certificado,
+  body[data-imprimir='genealogia'] .hoja-admin.doc-genealogia,
+  body[data-imprimir='historial'] .hoja-admin.doc-historial {
+    display: block !important;
+  }
+
+  body[data-imprimir] .no-imprimir {
+    display: none !important;
+  }
+
+  body[data-imprimir='certificado'],
+  body[data-imprimir='historial'] {
+    page: ficha-vertical;
+  }
+
+  body[data-imprimir='genealogia'] {
+    page: ficha-horizontal;
+  }
+
+  body[data-imprimir] .page-shell {
+    padding-block: 0 !important;
+  }
+
+  body[data-imprimir] .container-app {
+    max-width: none;
+    padding-inline: 0;
+  }
+
+  body[data-imprimir='certificado'] .doc-genealogia,
+  body[data-imprimir='certificado'] .doc-historial,
+  body[data-imprimir='genealogia'] .doc-certificado,
+  body[data-imprimir='genealogia'] .doc-historial,
+  body[data-imprimir='historial'] .doc-certificado,
+  body[data-imprimir='historial'] .doc-genealogia {
+    display: none !important;
+  }
+
+  body[data-imprimir] .doc-certificado article,
+  body[data-imprimir] .doc-genealogia article {
+    box-shadow: none !important;
+  }
+
+  body[data-imprimir='genealogia'] .genealogia-cuerpo {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  body[data-imprimir='genealogia'] .genealogia-rejilla {
+    display: grid !important;
+    height: 15cm;
+    margin-top: 1rem !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(8, minmax(0, 1fr));
+    column-gap: 1.5rem;
+  }
+
+  body[data-imprimir='genealogia'] .genealogia-lista {
+    display: none !important;
+  }
+
+  body[data-imprimir='historial'] .pantalla-historial {
+    display: none !important;
+  }
+
+  body[data-imprimir='historial'] .solo-impresion-historial {
+    display: block !important;
+  }
+
+  body[data-imprimir='historial'] .solo-impresion-historial thead {
+    display: table-header-group;
+  }
+
+  body[data-imprimir='historial'] .solo-impresion-historial tr {
+    break-inside: avoid;
+  }
+}
+
+@page ficha-vertical {
+  size: letter portrait;
+  margin: 12mm;
+}
+
+@page ficha-horizontal {
+  size: letter landscape;
+  margin: 10mm;
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;
