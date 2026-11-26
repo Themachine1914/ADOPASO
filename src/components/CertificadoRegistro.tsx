@@ -92,7 +92,6 @@ export function CertificadoRegistro({ horse }: { horse: CaballoPublico }) {
               <Linea label="Microchip No." value={horse.microchip} />
             </div>
             <Linea label="Señas particulares" value={horse.senas} />
-            <Linea label="DNA" value={horse.adn} />
             <div className="grid gap-3 sm:grid-cols-2">
               <Linea
                 label="Fecha de nacimiento"
