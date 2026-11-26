@@ -145,17 +145,22 @@ export function ImpresionRegistroAdmin({ fila }: { fila: Record<string, unknown>
 
   return (
     <>
-      <div className="basis-full">
-        <BarraHoja papel={papel} onPapel={setPapel} origen="admin" botonClass={BOTON_ADMIN} />
-      </div>
-      <BotonImprimir
-        documento="historial"
+      <BarraHoja
+        papel={papel}
+        onPapel={setPapel}
         origen="admin"
-        className={BOTON_ADMIN}
-        disabled={historial === null}
-      >
-        Imprimir historial
-      </BotonImprimir>
+        botonClass={BOTON_ADMIN}
+        extra={
+          <BotonImprimir
+            documento="historial"
+            origen="admin"
+            className={BOTON_ADMIN}
+            disabled={historial === null}
+          >
+            Imprimir historial
+          </BotonImprimir>
+        }
+      />
       {errorHistorial ? (
         <p role="alert" className="typo-caption basis-full text-flag-red">
           {errorHistorial}

@@ -485,54 +485,60 @@ export function BarraHoja({
   onPapel,
   origen,
   botonClass,
+  extra,
 }: {
   papel: PapelImpresion
   onPapel: (papel: PapelImpresion) => void
   origen?: 'admin'
   botonClass: string
+  extra?: ReactNode
 }) {
   function imprimir(documento: DocumentoImpreso) {
     imprimirDocumento(documento, origen, papel)
   }
-  const activo = 'bg-gold text-bg'
+  const activo = 'border border-gold bg-gold text-bg'
   const quieto = botonClass
   return (
-    <div className="no-imprimir space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="typo-label">Papel</span>
-        <button
-          type="button"
-          aria-pressed={papel === 'blanco'}
-          className={`typo-btn rounded-[10px] px-3 py-2 ${papel === 'blanco' ? activo : quieto}`}
-          onClick={() => onPapel('blanco')}
-        >
-          En blanco
-        </button>
-        <button
-          type="button"
-          aria-pressed={papel === 'timbrado'}
-          className={`typo-btn rounded-[10px] px-3 py-2 ${papel === 'timbrado' ? activo : quieto}`}
-          onClick={() => onPapel('timbrado')}
-        >
-          Timbrado
-        </button>
+    <section className="no-imprimir rounded-[12px] border border-border bg-bg/40 p-4">
+      <h3 className="typo-name">Preferencias de impresión</h3>
+      <div className="mt-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="typo-label">Papel</span>
+          <button
+            type="button"
+            aria-pressed={papel === 'blanco'}
+            className={`typo-btn rounded-[10px] px-3 py-2 ${papel === 'blanco' ? activo : quieto}`}
+            onClick={() => onPapel('blanco')}
+          >
+            En blanco
+          </button>
+          <button
+            type="button"
+            aria-pressed={papel === 'timbrado'}
+            className={`typo-btn rounded-[10px] px-3 py-2 ${papel === 'timbrado' ? activo : quieto}`}
+            onClick={() => onPapel('timbrado')}
+          >
+            Timbrado
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={botonClass} onClick={() => imprimir('certificado')}>
+            Imprimir certificado
+          </button>
+          <button type="button" className={botonClass} onClick={() => imprimir('genealogia')}>
+            Imprimir genealogía
+          </button>
+          <button type="button" className={botonClass} onClick={() => imprimir('ambos')}>
+            Imprimir ambos
+          </button>
+        </div>
+        {extra}
+        <p className="typo-caption max-w-xl">
+          {papel === 'timbrado'
+            ? 'El papel timbrado ya trae el fondo, el logo, las líneas y los títulos. Solo se imprimen los datos. Ambos es el frente y el reverso de la misma hoja de 8½ × 9¼.'
+            : 'En blanco imprime el formato completo, con el logo nuevo. El certificado va por delante y la genealogía por detrás, en hoja de 8½ × 9¼. En la ventana de impresión: márgenes en ninguno, escala 100 % y doble cara por el borde largo.'}
+        </p>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className={botonClass} onClick={() => imprimir('certificado')}>
-          Imprimir certificado
-        </button>
-        <button type="button" className={botonClass} onClick={() => imprimir('genealogia')}>
-          Imprimir genealogía
-        </button>
-        <button type="button" className={`typo-btn rounded-[10px] px-4 py-2 ${activo}`} onClick={() => imprimir('ambos')}>
-          Imprimir ambos
-        </button>
-      </div>
-      <p className="typo-caption max-w-xl">
-        {papel === 'timbrado'
-          ? 'El papel timbrado ya trae el fondo, el logo, las líneas y los títulos. Solo se imprimen los datos. Ambos es el frente y el reverso de la misma hoja de 8½ × 9¼.'
-          : 'En blanco imprime el formato completo, con el logo nuevo. El certificado va por delante y la genealogía por detrás, en hoja de 8½ × 9¼. En la ventana de impresión: márgenes en ninguno, escala 100 % y doble cara por el borde largo.'}
-      </p>
-    </div>
+    </section>
   )
 }

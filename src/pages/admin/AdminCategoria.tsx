@@ -374,10 +374,10 @@ function Detalle({
                 Eliminar
               </button>
             ) : null}
-            {esCaballo ? <ImpresionRegistroAdmin fila={fila} /> : null}
           </div>
-        ) : esCaballo ? (
-          <div className="mb-5 flex flex-wrap gap-2">
+        ) : null}
+        {esCaballo ? (
+          <div className="mb-5">
             <ImpresionRegistroAdmin fila={fila} />
           </div>
         ) : null}
