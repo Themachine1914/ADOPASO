@@ -41,6 +41,7 @@ import { formatFechaEmision, formatNombre } from '../../lib/format'
 import { matchesSearch } from '../../lib/normalize'
 import { listarJueces, type JuezCatalogo } from '../../lib/juzgamiento'
 import { cerrarSimulacion } from '../../lib/simulacion'
+import { BotonFormularioDireccion } from './FormularioDireccion'
 import { ResultadosCompetencia } from './ResultadosCompetencia'
 import { SelectorBusqueda } from './SelectorBusqueda'
 
@@ -270,6 +271,14 @@ export function AdminCompetencia() {
                         Introducir datos manual
                       </Link>
                     )}
+                    <BotonFormularioDireccion
+                      claseId={clase.id}
+                      categoria={clase.categoria}
+                      evento={competencia.nombre}
+                      fecha={competencia.fecha}
+                      lugar={competencia.lugar}
+                      onError={setError}
+                    />
                     <Link to={`/admin/juzgamiento/${clase.id}`} className="typo-meta underline">
                       Libretas y cómputo
                     </Link>

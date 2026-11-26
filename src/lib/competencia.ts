@@ -414,6 +414,80 @@ export async function inscribir(
   if (error) throw error
 }
 
+/** Una fila del formulario de dirección de eventos, lista para imprimir. */
+export interface FilaFormularioDireccion {
+  id: string
+  numero: number | null
+  registro: string | null
+  asociacion: string | null
+  nombre: string
+  sexo: string | null
+  nacimiento: string | null
+  padre: string | null
+  madre: string | null
+  criador: string | null
+  propietario: string | null
+  montador: string | null
+}
+
+function primero(...valores: (string | null | undefined)[]): string | null {
+  for (const valor of valores) {
+    const limpio = valor?.trim()
+    if (limpio) return limpio
+  }
+  return null
+}
+
+/**
+ * Ejemplares de la clase con los datos del formulario de dirección de eventos.
+ * Lo que falta en la inscripción se completa desde el registro del caballo.
+ */
+export async function cargarFormularioDireccion(claseId: string): Promise<FilaFormularioDireccion[]> {
+  const { data, error } = await supabase
+    .from('juzgamiento_ejemplares')
+    .select('id, numero, caballo_codigo, registro, asociacion, nombre, sexo, nacimiento, padre, madre, criador, propietario, montador')
+    .eq('juzgamiento_id', claseId)
+  if (error) throw error
+
+  const filas = (data ?? []) as Record<string, unknown>[]
+  const codigos = [
+    ...new Set(filas.map((fila) => texto(fila.caballo_codigo)).filter((codigo): codigo is string => Boolean(codigo))),
+  ]
+  const caballos = new Map<string, Record<string, unknown>>()
+  if (codigos.length > 0) {
+    const consulta = await supabase
+      .from('caballos')
+      .select('codigo, asociacion_abrev, padre, madre, criador')
+      .in('codigo', codigos)
+    if (consulta.error) throw consulta.error
+    for (const caballo of (consulta.data ?? []) as Record<string, unknown>[]) {
+      const codigo = texto(caballo.codigo)
+      if (codigo) caballos.set(codigo, caballo)
+    }
+  }
+
+  return filas
+    .map((fila) => {
+      const codigo = texto(fila.caballo_codigo)
+      const caballo = codigo ? caballos.get(codigo) : undefined
+      return {
+        id: String(fila.id),
+        numero: fila.numero == null ? null : Number(fila.numero),
+        registro: primero(texto(fila.registro), codigo),
+        asociacion: primero(caballo ? texto(caballo.asociacion_abrev) : null, texto(fila.asociacion)),
+        nombre: String(fila.nombre ?? ''),
+        sexo: texto(fila.sexo),
+        nacimiento: fecha(fila.nacimiento),
+        padre: primero(texto(fila.padre), caballo ? texto(caballo.padre) : null),
+        madre: primero(texto(fila.madre), caballo ? texto(caballo.madre) : null),
+        criador: primero(texto(fila.criador), caballo ? texto(caballo.criador) : null),
+        propietario: texto(fila.propietario),
+        montador: texto(fila.montador),
+      }
+    })
+    .sort((a, b) => (a.numero ?? 9999) - (b.numero ?? 9999) || a.nombre.localeCompare(b.nombre, 'es'))
+}
+
 export async function marcarPagado(inscripcionId: string, pagado: boolean): Promise<void> {
   const { error } = await supabase.from('juzgamiento_ejemplares').update({ pagado }).eq('id', inscripcionId)
   if (error) throw error
