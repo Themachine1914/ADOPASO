@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AyudaGuia } from '../../components/AyudaGuia'
 import { SearchInput } from '../../components/SearchInput'
@@ -38,7 +38,7 @@ import {
   type UltimoGrupo,
 } from '../../lib/competencia'
 import { formatFechaEmision, formatNombre } from '../../lib/format'
-import { matchesSearch } from '../../lib/normalize'
+import { matchesSearch, normalize } from '../../lib/normalize'
 import { listarJueces, type JuezCatalogo } from '../../lib/juzgamiento'
 import { cerrarSimulacion } from '../../lib/simulacion'
 import { BotonFormularioDireccion } from './FormularioDireccion'
@@ -494,10 +494,11 @@ function Inscripcion({
   const [resultados, setResultados] = useState<CaballoInscribible[]>([])
   const [caballo, setCaballo] = useState<CaballoInscribible | null>(null)
   const [pagado, setPagado] = useState(false)
-  const [verTodas, setVerTodas] = useState(false)
   const [montador, setMontador] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [ultimo, setUltimo] = useState<UltimoGrupo | null>(null)
+  const [eleccion, setEleccion] = useState<{ clave: string; codigo: number } | null>(null)
+  const montadorManual = useRef(false)
 
   // Último grupo en que compitió: se sugiere esa modalidad con la categoría de su edad de hoy.
   useEffect(() => {
@@ -506,7 +507,9 @@ function Inscripcion({
     let vigente = true
     ultimoGrupo(caballo.codigo)
       .then((grupo) => {
-        if (vigente) setUltimo(grupo)
+        if (!vigente) return
+        setUltimo(grupo)
+        if (!montadorManual.current && grupo?.montador) setMontador(grupo.montador)
       })
       .catch(() => undefined)
     return () => {
@@ -539,7 +542,14 @@ function Inscripcion({
     [caballo, fecha, catalogo, ultimo],
   )
   const recomendadas = sugerencias.filter((s) => s.recomendada)
-  const visibles = verTodas || recomendadas.length === 0 ? sugerencias : recomendadas
+  const ultimaClase = normalize(ultimo?.categoria ?? '').replace(/\s+/g, ' ')
+  const deLaUltimaClase = recomendadas.find(
+    (s) => s.ultimoGrupo && normalize(s.categoria.nombre).replace(/\s+/g, ' ') === ultimaClase,
+  )
+  const defecto = (deLaUltimaClase ?? recomendadas.find((s) => s.ultimoGrupo) ?? recomendadas[0])?.categoria.codigo ?? null
+  const claveDefecto = `${caballo?.codigo ?? ''}|${ultimo?.modalidad ?? ''}|${recomendadas.map((s) => s.categoria.codigo).join(',')}`
+  const categoriaCodigo = eleccion?.clave === claveDefecto ? eleccion.codigo : defecto
+  const categoriaElegida = recomendadas.find((s) => s.categoria.codigo === categoriaCodigo)?.categoria ?? null
 
   return (
     <section className="rounded-[12px] border-2 border-gold bg-gold/10 p-5">
@@ -567,8 +577,8 @@ function Inscripcion({
                 className="block w-full bg-bg/40 px-4 py-2 text-left hover:bg-surface-elevated"
                 onClick={() => {
                   setCaballo(item)
-                  setVerTodas(false)
                   setPagado(false)
+                  montadorManual.current = false
                   setMontador(null)
                 }}
               >
@@ -599,73 +609,93 @@ function Inscripcion({
             </p>
           ) : null}
 
+          <div className="mt-4 max-w-sm">
+            <span className="typo-label">Montador</span>
+            <SelectorBusqueda
+              busca={MONTADORES}
+              valor={montador ?? ''}
+              etiqueta={montador ? formatNombre(montador) : ''}
+              onElegir={(opcion) => {
+                montadorManual.current = true
+                setMontador(opcion?.valor ?? null)
+              }}
+            />
+            <p className="typo-caption mt-1 text-muted">
+              {montador
+                ? 'Viene de la última salida. Cámbielo solo si esta vez lo monta otra persona.'
+                : ultimo
+                  ? 'Esta salida no tiene montador guardado. Búsquelo.'
+                  : 'Buscando el montador de la última salida…'}
+            </p>
+          </div>
+
           {meses == null ? (
             <p className="typo-meta mt-3 text-flag-red">
               Este caballo no tiene fecha de nacimiento en el registro. Complétela antes de inscribirlo.
             </p>
-          ) : sugerencias.length === 0 ? (
-            <p className="typo-meta mt-3 text-flag-red">Ninguna categoría corresponde a su sexo y edad.</p>
+          ) : recomendadas.length === 0 ? (
+            <p className="typo-meta mt-3 text-flag-red">Ninguna categoría corresponde a su modalidad, sexo y edad.</p>
           ) : (
             <>
-              <div className="mt-4 max-w-sm">
-                <span className="typo-label">Montador</span>
-                <SelectorBusqueda
-                  busca={MONTADORES}
-                  valor={montador ?? ''}
-                  etiqueta={formatNombre(montador)}
-                  onElegir={(opcion) => setMontador(opcion?.valor ?? null)}
-                />
-              </div>
               <label className="typo-meta mt-4 flex items-center gap-2">
                 <input type="checkbox" checked={pagado} onChange={(e) => setPagado(e.target.checked)} />
                 Pagó la inscripción
               </label>
               <p className="typo-label mt-4">Categoría</p>
               <ul className="mt-2 space-y-2">
-                {visibles.map(({ categoria, recomendada, ultimoGrupo: delUltimo }, indice) => (
-                  <li
-                    key={categoria.codigo}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-border px-3 py-2"
-                  >
-                    <span className="text-sm">
-                      {categoria.nombre}
-                      {delUltimo && indice === 0 ? <span className="typo-caption ml-2 text-gold">Sugerida</span> : null}
-                      {!recomendada ? <span className="typo-meta"> · otra modalidad</span> : null}
-                    </span>
-                    <button
-                      type="button"
-                      className="typo-btn rounded-[10px] bg-gold px-3 py-1.5 text-bg"
-                      onClick={async () => {
-                        setAviso(null)
-                        const otro = montadorRepetido(clases, categoria.codigo, montador)
-                        if (
-                          otro &&
-                          !window.confirm(
-                            `${formatNombre(montador)} ya monta a ${formatNombre(otro.nombre)} en ${categoria.nombre}. Un montador no puede llevar dos caballos en la misma categoría. ¿Inscribir de todas formas?`,
-                          )
-                        ) {
-                          return
-                        }
-                        try {
-                          await onInscribir(categoria, caballo, pagado, montador)
-                          setAviso(`${formatNombre(caballo.nombre)} quedó inscrito en ${categoria.nombre}.`)
-                          setCaballo(null)
-                          setBusqueda('')
-                        } catch (err) {
-                          setAviso(err instanceof Error ? err.message : 'No se pudo inscribir.')
-                        }
-                      }}
-                    >
-                      Registrar
-                    </button>
-                  </li>
-                ))}
+                {recomendadas.map(({ categoria, ultimoGrupo: delUltimo }) => {
+                  const marcada = categoria.codigo === categoriaCodigo
+                  return (
+                    <li key={categoria.codigo}>
+                      <label
+                        className={`flex cursor-pointer items-start gap-2 rounded-[10px] border px-3 py-2 ${marcada ? 'border-gold bg-gold/10' : 'border-border'}`}
+                      >
+                        <input
+                          type="radio"
+                          name={`categoria-${caballo.codigo}`}
+                          className="mt-1 accent-[#d4af37]"
+                          checked={marcada}
+                          onChange={() => setEleccion({ clave: claveDefecto, codigo: categoria.codigo })}
+                        />
+                        <span className="text-sm">
+                          {categoria.nombre}
+                          {delUltimo && categoria.codigo === defecto ? (
+                            <span className="typo-caption ml-2 text-gold">Última en que compitió</span>
+                          ) : null}
+                        </span>
+                      </label>
+                    </li>
+                  )
+                })}
               </ul>
-              {recomendadas.length > 0 && recomendadas.length < sugerencias.length ? (
-                <button type="button" className="typo-meta mt-2 underline" onClick={() => setVerTodas(!verTodas)}>
-                  {verTodas ? 'Ver solo las de su modalidad' : 'Ver categorías de otras modalidades'}
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className="typo-btn mt-4 rounded-[10px] bg-gold px-4 py-2 text-bg disabled:opacity-50"
+                disabled={!categoriaElegida}
+                onClick={async () => {
+                  if (!categoriaElegida) return
+                  setAviso(null)
+                  const otro = montadorRepetido(clases, categoriaElegida.codigo, montador)
+                  if (
+                    otro &&
+                    !window.confirm(
+                      `${formatNombre(montador)} ya monta a ${formatNombre(otro.nombre)} en ${categoriaElegida.nombre}. Un montador no puede llevar dos caballos en la misma categoría. ¿Inscribir de todas formas?`,
+                    )
+                  ) {
+                    return
+                  }
+                  try {
+                    await onInscribir(categoriaElegida, caballo, pagado, montador)
+                    setAviso(`${formatNombre(caballo.nombre)} quedó inscrito en ${categoriaElegida.nombre}.`)
+                    setCaballo(null)
+                    setBusqueda('')
+                  } catch (err) {
+                    setAviso(err instanceof Error ? err.message : 'No se pudo inscribir.')
+                  }
+                }}
+              >
+                Inscribir
+              </button>
             </>
           )}
         </div>
@@ -698,6 +728,20 @@ function InscribirEnCategoria({
   const [pagado, setPagado] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
+  const montadorManual = useRef(false)
+
+  useEffect(() => {
+    if (!caballo) return
+    let vigente = true
+    ultimoGrupo(caballo.codigo)
+      .then((grupo) => {
+        if (vigente && !montadorManual.current && grupo?.montador) setMontador(grupo.montador)
+      })
+      .catch(() => undefined)
+    return () => {
+      vigente = false
+    }
+  }, [caballo])
 
   useEffect(() => {
     let vigente = true
@@ -756,6 +800,7 @@ function InscribirEnCategoria({
                       className="block w-full bg-bg/40 px-4 py-2 text-left hover:bg-surface-elevated disabled:opacity-50"
                       onClick={() => {
                         setCaballo(item)
+                        montadorManual.current = false
                         setMontador(null)
                         setPagado(false)
                         setAviso(null)
@@ -798,8 +843,11 @@ function InscribirEnCategoria({
                 <SelectorBusqueda
                   busca={MONTADORES}
                   valor={montador ?? ''}
-                  etiqueta={formatNombre(montador)}
-                  onElegir={(opcion) => setMontador(opcion?.valor ?? null)}
+                  etiqueta={montador ? formatNombre(montador) : ''}
+                  onElegir={(opcion) => {
+                    montadorManual.current = true
+                    setMontador(opcion?.valor ?? null)
+                  }}
                 />
               </div>
               <label className="typo-meta flex items-center gap-2">
