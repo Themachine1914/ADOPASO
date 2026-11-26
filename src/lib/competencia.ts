@@ -1,4 +1,5 @@
 import { mesesCumplidos, modalidadDeClase, sexoRegistro, type Modalidad } from './campeonato'
+import { normalize } from './normalize'
 import { LUGARES_PUESTO } from './computo'
 import { valorModalidadRegistro } from './registro'
 import { supabase } from './supabase'
@@ -522,21 +523,42 @@ export interface UltimoGrupo {
   categoria: string
   fecha: string
   modalidad: Modalidad | null
+  montador: string | null
 }
 
 export async function ultimoGrupo(caballoCodigo: string): Promise<UltimoGrupo | null> {
+  // La clase (Yeguas Performance de 60 a 101 meses) quedó guardada en «juez».
+  // «categoria_nombre» solo dice FUNCIONAL o BELLAS FORMAS y no distingue Performance ni Placer.
   const { data, error } = await supabase
     .from('participaciones')
-    .select('fecha, categoria_nombre')
+    .select('fecha, juez, montador, montador_codigo')
     .eq('caballo_codigo', caballoCodigo)
-    .not('categoria_nombre', 'is', null)
+    .not('juez', 'is', null)
     .order('fecha', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+    .limit(15)
   if (error) throw error
-  if (!data) return null
-  const categoria = String(data.categoria_nombre ?? '').replace(/\s+/g, ' ').trim()
-  return { categoria, fecha: fecha(data.fecha) ?? '', modalidad: modalidadDeClase(categoria, null) }
+  for (const row of data ?? []) {
+    const categoria = String(row.juez ?? '').replace(/\s+/g, ' ').trim()
+    const modalidad = modalidadDeClase(categoria, null)
+    if (!categoria || !modalidad) continue
+    const montador = await nombreDeMontador(String(row.montador ?? ''), Number(row.montador_codigo) || null)
+    return { categoria, fecha: fecha(row.fecha) ?? '', modalidad, montador }
+  }
+  return null
+}
+
+/** Nombre que debe verse ya elegido en el campo, el del catálogo si coincide. */
+async function nombreDeMontador(escrito: string, codigo: number | null): Promise<string | null> {
+  let nombre = escrito.replace(/\s+/g, ' ').trim()
+  if (!nombre && codigo && codigo > 0) {
+    const porCodigo = await supabase.from('montadores').select('nombre').eq('codigo', codigo).limit(1).maybeSingle()
+    nombre = String(porCodigo.data?.nombre ?? '').replace(/\s+/g, ' ').trim()
+  }
+  if (!nombre) return null
+  const seguro = nombre.replace(/[%_\\]/g, '')
+  const porNombre = await supabase.from('montadores').select('nombre').ilike('nombre', seguro).limit(8)
+  const oficial = (porNombre.data ?? []).find((fila) => normalize(String(fila.nombre ?? '')) === normalize(nombre))
+  return String(oficial?.nombre ?? nombre)
 }
 
 /** Montador que ya monta a otro caballo en esa categoría (el mismo no puede montar dos a la vez). */
