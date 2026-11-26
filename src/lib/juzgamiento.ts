@@ -155,7 +155,8 @@ export async function cargarSala(id: string): Promise<SalaJuzgamiento | null> {
   const [juzgamiento, ejemplares, jueces, votos] = await Promise.all([
     supabase
       .from('juzgamientos')
-      .select('id, evento, fecha, lugar, categoria, codigo, competencias (etiqueta_jueces)')
+      // Hay dos vínculos con competencias (la categoría pertenece a una, y la competencia señala la clase en pista).
+      .select('id, evento, fecha, lugar, categoria, codigo, competencias!juzgamientos_competencia_id_fkey(etiqueta_jueces)')
       .eq('id', id)
       .maybeSingle(),
     supabase.from('juzgamiento_ejemplares').select('*').eq('juzgamiento_id', id).order('numero'),
