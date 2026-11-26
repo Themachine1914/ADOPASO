@@ -248,7 +248,8 @@
   }
 }
 
-.solo-impresion-historial {
+.solo-impresion-historial,
+.hoja-admin {
   display: none;
 }
 
@@ -267,6 +268,16 @@
     min-height: 0 !important;
     height: auto !important;
     overflow: visible !important;
+  }
+
+  body[data-imprimir-origen='admin'] #root {
+    display: none !important;
+  }
+
+  body[data-imprimir='certificado'] .hoja-admin.doc-certificado,
+  body[data-imprimir='genealogia'] .hoja-admin.doc-genealogia,
+  body[data-imprimir='historial'] .hoja-admin.doc-historial {
+    display: block !important;
   }
 
   body[data-imprimir] .no-imprimir {

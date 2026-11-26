@@ -590,7 +590,7 @@ export async function buscarCaballos(query: string): Promise<CaballoPublico[]> {
       .order('nombre', { ascending: true })
       .limit(LIMITE_BUSQUEDA)
     if (error) throw error
-    return (data ?? []).map(mapCaballo)
+    return (data ?? []).map(fichaCaballo)
   }
 
   const like = `%${termino}%`
@@ -620,7 +620,7 @@ export async function buscarCaballos(query: string): Promise<CaballoPublico[]> {
 
   const vistos = new Map<string, CaballoPublico>()
   for (const fila of [...(exacto.data ?? []), ...(enNombre.data ?? []), ...(relacionados.data ?? [])]) {
-    const caballo = mapCaballo(fila)
+    const caballo = fichaCaballo(fila)
     if (!vistos.has(caballo.codigo)) vistos.set(caballo.codigo, caballo)
   }
   return [...vistos.values()]
@@ -644,7 +644,7 @@ export async function cargarCaballo(codigo: string): Promise<CaballoPublico | nu
   const porCodigo = await leerFicha((campos) =>
     supabase.from('caballo_publico').select(campos).eq('codigo', codigo).maybeSingle(),
   )
-  if (porCodigo) return mapCaballo(porCodigo)
+  if (porCodigo) return fichaCaballo(porCodigo)
 
   const porNombre = await supabase
     .from('caballo_publico')
@@ -652,7 +652,7 @@ export async function cargarCaballo(codigo: string): Promise<CaballoPublico | nu
     .ilike('nombre', codigo)
     .limit(1)
   if (porNombre.error) throw porNombre.error
-  return porNombre.data?.[0] ? mapCaballo(porNombre.data[0]) : null
+  return porNombre.data?.[0] ? fichaCaballo(porNombre.data[0]) : null
 }
 
 export async function cargarHistorialCaballo(caballoId: string): Promise<ResultadoPublico[]> {
@@ -699,7 +699,8 @@ function mapaAncestros(value: unknown): Record<string, Ancestro> {
   )
 }
 
-function mapCaballo(row: Record<string, unknown>): CaballoPublico {
+/** Ficha lista para el certificado y la genealogía, desde una fila del registro o de la vista pública. */
+export function fichaCaballo(row: Record<string, unknown>): CaballoPublico {
   return {
     codigo: texto(row.codigo),
     nombre: formatNombre(texto(row.nombre) || texto(row.codigo)),
