@@ -46,7 +46,7 @@ export const GUIA: CategoriaGuia[] = [
       {
         pregunta: '¿Qué diferencia hay entre «Administrador» y «Consulta»?',
         respuesta:
-          'Consulta puede ver caballos, descendencia, resultados, calendario y categorías de competencia. Administrador ve todo eso y además los datos personales (socios, criadores, montadores y jueces), puede registrar, corregir y eliminar, y usa el juzgamiento y la gestión de usuarios. El tipo de usuario aparece arriba a la derecha, debajo de su correo.',
+          'Los dos ven todo: caballos, descendencia, resultados, calendario, categorías, datos personales (socios, criadores, montadores y jueces), competencias, juzgamiento y la lista de usuarios. Solo Administrador puede registrar, corregir y eliminar, maneja las competencias y activa usuarios. Consulta no ve los códigos de acceso de jueces, pre-pista y mesa técnica. El tipo de usuario aparece arriba a la derecha, debajo de su correo.',
       },
       {
         pregunta: 'Olvidé mi contraseña.',
@@ -218,9 +218,9 @@ export const GUIA: CategoriaGuia[] = [
     soloAdmin: true,
     articulos: [
       {
-        pregunta: '¿Por qué un usuario de «Consulta» no ve estas secciones?',
+        pregunta: '¿Un usuario de «Consulta» puede cambiar estos datos?',
         respuesta:
-          'Tienen datos personales (teléfono, correo, dirección). Solo los administradores pueden verlos.',
+          'No. Consulta ve los datos personales (teléfono, correo, dirección), pero solo los administradores pueden registrarlos, corregirlos o borrarlos.',
       },
       {
         pregunta: '¿Cómo encuentro el teléfono o el correo de un socio?',
