@@ -1,10 +1,10 @@
-import { useDeferredValue, useEffect, useState } from 'react'
+import { Fragment, useDeferredValue, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { PageHeader } from '../components/PageHeader'
 import { SearchInput } from '../components/SearchInput'
 import { HorseGridSkeleton } from '../components/Skeleton'
-import { buscarCaballos } from '../lib/publico'
+import { buscarCaballos, relevanciaCaballo, RELEVANCIA_RELACIONADO } from '../lib/publico'
 import { supabaseConfigurado } from '../lib/supabase'
 import type { CaballoPublico } from '../types/publico'
 
@@ -39,6 +39,11 @@ export function Horses() {
   }, [deferredQuery])
 
   const searching = query !== deferredQuery
+  // Con búsqueda, primero va el caballo que se buscó y después lo relacionado (hijos, expositor, criador).
+  const termino = deferredQuery.trim()
+  const primerRelacionado = termino
+    ? results.findIndex((horse) => relevanciaCaballo(horse, termino) >= RELEVANCIA_RELACIONADO)
+    : -1
 
   return (
     <div className="container-app page-shell">
@@ -94,9 +99,15 @@ export function Horses() {
             <span className="typo-label">Expositor</span>
           </div>
           <div className="divide-y divide-border">
-            {results.map((horse) => (
+            {results.map((horse, indice) => (
+              <Fragment key={horse.codigo}>
+              {indice === primerRelacionado ? (
+                <p className="typo-label bg-surface px-4 py-2">
+                  {indice === 0 ? `Ningún caballo se llama «${termino}». Relacionados:` : `Relacionados con «${termino}»`}
+                  <span className="typo-meta ml-2 normal-case">hijos, expositor o criador</span>
+                </p>
+              ) : null}
               <Link
-                key={horse.codigo}
                 to={`/caballo/${encodeURIComponent(horse.codigo)}`}
                 className="grid gap-1 bg-bg/40 px-4 py-3 transition-colors duration-200 hover:bg-surface-elevated md:grid-cols-[7rem_1fr_8rem_1.2fr] md:items-center md:gap-3"
               >
@@ -107,6 +118,7 @@ export function Horses() {
                 </p>
                 <p className="typo-meta truncate">{horse.expositor || horse.criador || '—'}</p>
               </Link>
+              </Fragment>
             ))}
           </div>
         </div>
