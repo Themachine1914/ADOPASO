@@ -269,7 +269,10 @@ export function AdminCompetencia() {
                         {clase.fase === 'inscripcion' ? 'Cerrar y numerar' : 'Numerar los nuevos'}
                       </button>
                     ) : null}
-                    <Link to={`/admin/competencias/${competencia.id}/captura/${clase.id}`} className="typo-meta underline">
+                    <Link
+                      to={`/admin/competencias/${competencia.id}/captura/${clase.id}`}
+                      className="typo-btn rounded-[10px] bg-gold px-3 py-1.5 text-sm text-bg"
+                    >
                       Captura manual
                     </Link>
                     <Link to={`/admin/juzgamiento/${clase.id}`} className="typo-meta underline">
