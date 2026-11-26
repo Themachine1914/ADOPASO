@@ -39,7 +39,7 @@ export function Horses() {
   }, [deferredQuery])
 
   const searching = query !== deferredQuery
-  // Con búsqueda, primero va el caballo que se buscó y después lo relacionado (hijos, expositor, criador).
+  // Con búsqueda, primero va el caballo que se buscó y después sus hijos.
   const termino = deferredQuery.trim()
   const primerRelacionado = termino
     ? results.findIndex((horse) => relevanciaCaballo(horse, termino) >= RELEVANCIA_RELACIONADO)
@@ -58,7 +58,7 @@ export function Horses() {
           value={query}
           onChange={setQuery}
           label="Buscar caballos"
-          placeholder="Nombre, código, expositor, criador o pedigrí…"
+          placeholder="Nombre o código del caballo…"
         />
       </div>
 
@@ -77,7 +77,7 @@ export function Horses() {
       ) : results.length === 0 ? (
         <EmptyState
           title="No encontramos caballos"
-          description="Prueba con el nombre, el código de registro o el expositor."
+          description="Prueba con el nombre o el código de registro del caballo."
           action={
             query ? (
               <button
@@ -103,8 +103,7 @@ export function Horses() {
               <Fragment key={horse.codigo}>
               {indice === primerRelacionado ? (
                 <p className="typo-label bg-surface px-4 py-2">
-                  {indice === 0 ? `Ningún caballo se llama «${termino}». Relacionados:` : `Relacionados con «${termino}»`}
-                  <span className="typo-meta ml-2 normal-case">hijos, expositor o criador</span>
+                  {indice === 0 ? `Ningún caballo se llama «${termino}». Hijos de caballos con ese nombre:` : `Relacionados: hijos de «${termino}»`}
                 </p>
               ) : null}
               <Link
