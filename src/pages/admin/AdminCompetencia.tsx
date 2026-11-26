@@ -292,6 +292,9 @@ export function AdminCompetencia() {
                         Simulación de competencia
                       </button>
                     ) : null}
+                    <Link to={`/admin/competencias/${competencia.id}/captura/${clase.id}`} className="typo-meta underline">
+                      Captura manual
+                    </Link>
                     <Link to={`/admin/juzgamiento/${clase.id}`} className="typo-meta underline">
                       Libretas y cómputo
                     </Link>

@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { AuthProvider } from './lib/auth'
 import { AdminCategoria } from './pages/admin/AdminCategoria'
+import { AdminCaptura } from './pages/admin/AdminCaptura'
 import { AdminCompetencia } from './pages/admin/AdminCompetencia'
 import { AdminCompetencias } from './pages/admin/AdminCompetencias'
 import { AdminSimulacion } from './pages/admin/AdminSimulacion'
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="guia" element={<AdminGuia />} />
             <Route path="competencias" element={<AdminCompetencias />} />
             <Route path="competencias/:id" element={<AdminCompetencia />} />
+            <Route path="competencias/:id/captura/:claseId" element={<AdminCaptura />} />
             <Route path="competencias/:id/simulacion" element={<AdminSimulacion />} />
             <Route path="juzgamiento" element={<AdminJuzgamiento />} />
             <Route path="juzgamiento/:id" element={<AdminJuzgamientoSala />} />
