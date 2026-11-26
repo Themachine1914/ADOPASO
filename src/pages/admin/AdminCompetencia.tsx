@@ -40,7 +40,7 @@ import {
 import { formatFechaEmision, formatNombre } from '../../lib/format'
 import { matchesSearch } from '../../lib/normalize'
 import { listarJueces, type JuezCatalogo } from '../../lib/juzgamiento'
-import { cerrarSimulacion, simularCategoria } from '../../lib/simulacion'
+import { cerrarSimulacion } from '../../lib/simulacion'
 import { ResultadosCompetencia } from './ResultadosCompetencia'
 import { SelectorBusqueda } from './SelectorBusqueda'
 
@@ -267,29 +267,6 @@ export function AdminCompetencia() {
                         }}
                       >
                         {clase.fase === 'inscripcion' ? 'Cerrar y numerar' : 'Numerar los nuevos'}
-                      </button>
-                    ) : null}
-                    {!competencia.simulacion ? (
-                      <button
-                        type="button"
-                        className="typo-meta rounded-[10px] border border-gold/60 px-3 py-1 text-gold"
-                        title="Copia esta categoría a una competencia de práctica para hacer el paralelo"
-                        onClick={() => {
-                          const texto =
-                            `¿Hacer la simulación de ${clase.categoria}?\n\n` +
-                            'Se copia con los mismos caballos, montadores y números a una competencia de práctica, con sus ' +
-                            'propios códigos de mesa, pre-pista y jueces. La competencia real no se toca y la simulación no ' +
-                            'cuenta para el ranking.'
-                          if (!window.confirm(texto)) return
-                          let destino: string | null = null
-                          void hacer(async () => {
-                            destino = await simularCategoria(detalle, clase.id)
-                          }).then(() => {
-                            if (destino) navigate(`/admin/competencias/${destino}`)
-                          })
-                        }}
-                      >
-                        Simulación de competencia
                       </button>
                     ) : null}
                     <Link to={`/admin/competencias/${competencia.id}/captura/${clase.id}`} className="typo-meta underline">
