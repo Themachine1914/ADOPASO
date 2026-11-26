@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { CertificadoRegistro } from '../components/CertificadoRegistro'
-import { Genealogia } from '../components/Genealogia'
+import { BarraHoja, HojasRegistro } from '../components/HojaRegistro'
 import { BotonImprimir, HistorialImpreso } from '../components/ImpresionFicha'
-import type { DocumentoImpreso } from '../lib/impresion'
+import type { DocumentoImpreso, PapelImpresion } from '../lib/impresion'
 import { formatDate, formatPoints, placeLabel } from '../lib/format'
-import { generaciones, tieneGenealogia } from '../lib/genealogia'
 import { cargarCaballo, cargarHistorialCaballo } from '../lib/publico'
 import { supabaseConfigurado } from '../lib/supabase'
 import type { CaballoPublico, ResultadoPublico } from '../types/publico'
@@ -34,6 +32,7 @@ export function HorseDetail() {
   const [historial, setHistorial] = useState<ResultadoPublico[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [papel, setPapel] = useState<PapelImpresion>('blanco')
 
   useEffect(() => {
     if (!supabaseConfigurado || !codigo) {
@@ -74,6 +73,8 @@ export function HorseDetail() {
             microchip: null,
             modalidad: null,
             fechaRegistro: null,
+            pais: null,
+            asociacionAbrev: null,
             ancestros: {},
           },
         )
@@ -142,26 +143,22 @@ export function HorseDetail() {
         </div>
       </section>
 
-      <section className="container-app page-shell space-y-8">
-        <div className="doc-certificado">
-          {enRegistro ? (
-            <>
-              <BotonFicha documento="certificado">Imprimir certificado</BotonFicha>
-              <CertificadoRegistro horse={horse} />
-            </>
-          ) : (
-            <div className="no-imprimir rounded-[12px] border border-border bg-surface px-6 py-8">
-              <p className="typo-name">Sin certificado en el libro de registro</p>
-              <p className="typo-meta mt-2">Este ejemplar aparece por sus resultados de competencia.</p>
-            </div>
-          )}
-        </div>
-        {tieneGenealogia(horse) ? (
-          <div className="doc-genealogia">
-            <BotonFicha documento="genealogia">Imprimir genealogía</BotonFicha>
-            <Genealogia horseId={horse.codigo} columnas={generaciones(horse)} />
+      <section className="container-app page-shell space-y-6">
+        {enRegistro ? (
+          <>
+            <BarraHoja
+              papel={papel}
+              onPapel={setPapel}
+              botonClass="typo-btn rounded-[10px] border border-border bg-surface px-4 py-2 text-ink"
+            />
+            <HojasRegistro horse={horse} papel={papel} />
+          </>
+        ) : (
+          <div className="no-imprimir rounded-[12px] border border-border bg-surface px-6 py-8">
+            <p className="typo-name">Sin certificado en el libro de registro</p>
+            <p className="typo-meta mt-2">Este ejemplar aparece por sus resultados de competencia.</p>
           </div>
-        ) : null}
+        )}
       </section>
 
       <section className="doc-historial container-app page-shell">

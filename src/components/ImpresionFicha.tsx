@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CertificadoRegistro } from './CertificadoRegistro'
-import { Genealogia } from './Genealogia'
+import { BarraHoja, HojasRegistro } from './HojaRegistro'
 import { formatDate, formatPoints, placeLabel } from '../lib/format'
-import { generaciones, tieneGenealogia } from '../lib/genealogia'
-import { imprimirDocumento, type DocumentoImpreso } from '../lib/impresion'
+import { imprimirDocumento, type DocumentoImpreso, type PapelImpresion } from '../lib/impresion'
 import { cargarHistorialCaballo, fichaCaballo } from '../lib/publico'
 import type { CaballoPublico, ResultadoPublico } from '../types/publico'
 
@@ -117,6 +115,7 @@ export function ImpresionRegistroAdmin({ fila }: { fila: Record<string, unknown>
   const horse = useMemo(() => fichaCaballo(fila), [fila])
   const [historial, setHistorial] = useState<ResultadoPublico[] | null>(null)
   const [errorHistorial, setErrorHistorial] = useState<string | null>(null)
+  const [papel, setPapel] = useState<PapelImpresion>('blanco')
 
   useEffect(() => {
     let cancelado = false
@@ -136,31 +135,19 @@ export function ImpresionRegistroAdmin({ fila }: { fila: Record<string, unknown>
 
   const puntos = (historial ?? []).reduce((sum, entrada) => sum + entrada.puntos, 0)
   const hojas = (
-    <>
-      <div className="hoja-admin doc-certificado">
-        <CertificadoRegistro horse={horse} />
-      </div>
-      {tieneGenealogia(horse) ? (
-        <div className="hoja-admin doc-genealogia">
-          <Genealogia horseId={horse.codigo} columnas={generaciones(horse)} />
-        </div>
-      ) : null}
-      <div className="hoja-admin doc-historial">
+    <div className="hoja-admin">
+      <HojasRegistro horse={horse} papel={papel} />
+      <div className="doc-historial">
         <HistorialImpreso horse={horse} filas={historial ?? []} anio={null} puntos={puntos} />
       </div>
-    </>
+    </div>
   )
 
   return (
     <>
-      <BotonImprimir documento="certificado" origen="admin" className={BOTON_ADMIN}>
-        Imprimir certificado
-      </BotonImprimir>
-      {tieneGenealogia(horse) ? (
-        <BotonImprimir documento="genealogia" origen="admin" className={BOTON_ADMIN}>
-          Imprimir genealogía
-        </BotonImprimir>
-      ) : null}
+      <div className="basis-full">
+        <BarraHoja papel={papel} onPapel={setPapel} origen="admin" botonClass={BOTON_ADMIN} />
+      </div>
       <BotonImprimir
         documento="historial"
         origen="admin"
