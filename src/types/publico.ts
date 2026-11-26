@@ -72,6 +72,8 @@ export interface CaballoPublico {
   microchip: string | null
   modalidad: string | null
   fechaRegistro: string | null
+  pais: string | null
+  asociacionAbrev: string | null
   ancestros: Record<string, Ancestro>
 }
 

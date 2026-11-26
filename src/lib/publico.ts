@@ -719,6 +719,8 @@ export function fichaCaballo(row: Record<string, unknown>): CaballoPublico {
     microchip: texto(row.microchip) || null,
     modalidad: texto(row.raza) ? formatNombre(texto(row.raza)) : null,
     fechaRegistro: fechaIso(row.fecha_registro) || null,
+    pais: texto(row.pais) ? formatNombre(texto(row.pais)) : null,
+    asociacionAbrev: texto(row.asociacion_abrev) ? texto(row.asociacion_abrev).toLocaleUpperCase('es-DO') : null,
     ancestros: mapaAncestros(row.ancestros),
   }
 }

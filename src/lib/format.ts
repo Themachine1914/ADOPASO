@@ -29,6 +29,19 @@ export function formatFechaRegistro(dateStr: string): string {
   return `${dia}-${MESES_CORTOS[date.getMonth()]}-${date.getFullYear()}`
 }
 
+/** Fecha del certificado partida como en el papel: 23, FEBRERO, 20, 12. */
+export function partesFechaHoja(dateStr: string): { dia: string; mes: string; siglo: string; anio: string } | null {
+  const date = fechaLocal(dateStr)
+  if (!date) return null
+  const anio = String(date.getFullYear())
+  return {
+    dia: String(date.getDate()).padStart(2, '0'),
+    mes: MESES[date.getMonth()].toLocaleUpperCase('es-DO'),
+    siglo: anio.slice(0, 2),
+    anio: anio.slice(2),
+  }
+}
+
 /** Fecha de emisión del certificado: 23 de febrero de 2012. */
 export function formatFechaEmision(dateStr: string): string {
   const date = fechaLocal(dateStr)
