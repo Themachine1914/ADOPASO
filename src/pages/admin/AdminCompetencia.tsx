@@ -164,28 +164,7 @@ export function AdminCompetencia() {
       ) : null}
 
       <section>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="typo-section">Categorías e inscritos</h2>
-            <p className="typo-meta mt-1">
-              Cierre cada categoría cuando termine su inscripción: se numera (el más adulto lleva el 1) y la mesa técnica
-              ya la puede sacar a pista. Las demás siguen abiertas. Un caballo inscrito tarde recibe el siguiente número
-              libre sin mover a los demás. La pre-pista puede cambiar los números antes de que juzguen.
-            </p>
-          </div>
-          {!finalizada && abiertas > 0 ? (
-            <button
-              type="button"
-              className="typo-btn rounded-[10px] border border-border px-4 py-2.5"
-              onClick={() => {
-                const texto = `¿Cerrar y numerar las ${abiertas} categorías abiertas? Las que ya están cerradas conservan sus números.`
-                if (window.confirm(texto)) void hacer(() => numerarCompetencia(competencia.id))
-              }}
-            >
-              Cerrar todas las categorías ({abiertas})
-            </button>
-          ) : null}
-        </div>
+        <h2 className="typo-section">Categorías e inscritos</h2>
 
         {clases.length === 0 ? (
           <p className="typo-meta mt-4">Todavía no hay caballos inscritos.</p>
@@ -424,6 +403,20 @@ export function AdminCompetencia() {
             })}
           </div>
         )}
+        {!finalizada && abiertas > 0 ? (
+          <div className="mt-8 flex justify-end">
+            <button
+              type="button"
+              className="typo-btn rounded-[10px] border border-border px-4 py-2.5 text-muted hover:text-ink"
+              onClick={() => {
+                const texto = `¿Cerrar y numerar las ${abiertas} categorías abiertas? Las que ya están cerradas conservan sus números.`
+                if (window.confirm(texto)) void hacer(() => numerarCompetencia(competencia.id))
+              }}
+            >
+              Cerrar todas las categorías ({abiertas})
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <ResultadosCompetencia competencia={competencia} onCambio={recargar} />
@@ -540,8 +533,8 @@ function Inscripcion({
   const visibles = verTodas || recomendadas.length === 0 ? sugerencias : recomendadas
 
   return (
-    <section className="rounded-[12px] border border-border bg-surface p-5">
-      <h2 className="typo-section">Inscribir un caballo</h2>
+    <section className="rounded-[12px] border-2 border-gold bg-gold/10 p-5">
+      <h2 className="typo-section text-gold">Inscribir un caballo</h2>
       <label className="mt-4 block">
         <span className="typo-label">Buscar por nombre o registro</span>
         <input
