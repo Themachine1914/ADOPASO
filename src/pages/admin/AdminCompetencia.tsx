@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AyudaGuia } from '../../components/AyudaGuia'
+import { SearchInput } from '../../components/SearchInput'
 import type { BuscaLista } from '../../admin/categorias'
 import { useAuth } from '../../lib/auth-context'
 import {
@@ -37,6 +38,7 @@ import {
   type UltimoGrupo,
 } from '../../lib/competencia'
 import { formatFechaEmision, formatNombre } from '../../lib/format'
+import { matchesSearch } from '../../lib/normalize'
 import { listarJueces, type JuezCatalogo } from '../../lib/juzgamiento'
 import { cerrarSimulacion, simularCategoria } from '../../lib/simulacion'
 import { ResultadosCompetencia } from './ResultadosCompetencia'
@@ -56,6 +58,7 @@ export function AdminCompetencia() {
   const [error, setError] = useState<string | null>(null)
   const [editando, setEditando] = useState<string | null>(null)
   const [agregando, setAgregando] = useState<string | null>(null)
+  const [busquedaCategoria, setBusquedaCategoria] = useState('')
 
   async function recargar() {
     setDetalle(await cargarCompetencia(id))
@@ -98,6 +101,7 @@ export function AdminCompetencia() {
   if (!detalle) return <p className="typo-meta">{error ?? 'Esta competencia no existe.'}</p>
 
   const { competencia, clases } = detalle
+  const clasesVisibles = clases.filter((clase) => matchesSearch(clase.categoria, busquedaCategoria))
   const inscritos = clases.reduce((suma, clase) => suma + clase.inscritos.length, 0)
   const porCerrar = (clase: ClaseCompetencia) =>
     clase.fase === 'inscripcion' || (clase.fase === 'prepista' && clase.inscritos.some((item) => item.numero == null))
@@ -187,14 +191,36 @@ export function AdminCompetencia() {
           <p className="typo-meta mt-4">Todavía no hay caballos inscritos.</p>
         ) : (
           <div className="mt-4 space-y-4">
-            {clases.map((clase) => {
+            <SearchInput
+              value={busquedaCategoria}
+              onChange={setBusquedaCategoria}
+              label="Buscar categoría"
+              placeholder="Buscar una categoría para inscribir…"
+            />
+            {clasesVisibles.length === 0 ? (
+              <p className="typo-meta">Ninguna categoría coincide con esa búsqueda.</p>
+            ) : null}
+            {clasesVisibles.map((clase) => {
               // Se inscribe a última hora mientras la categoría no esté en juzgamiento.
               const categoriaClase = catalogo.find((c) => c.codigo === clase.eventoCodigo) ?? null
               const admiteInscripcion =
                 !finalizada && categoriaClase != null && (clase.fase === 'inscripcion' || clase.fase === 'prepista')
+              const capturada = clase.fase === 'cerrada'
+              const enPista = competencia.claseActiva === clase.id && !capturada
               return (
-              <div key={clase.id} className="overflow-hidden rounded-[12px] border border-border">
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-surface px-4 py-3">
+              <div
+                key={clase.id}
+                className={[
+                  'overflow-hidden rounded-[12px] border',
+                  capturada ? 'border-emerald-500/60' : enPista ? 'border-amber-400/80' : 'border-border',
+                ].join(' ')}
+              >
+                <div
+                  className={[
+                    'flex flex-wrap items-center justify-between gap-2 px-4 py-3',
+                    capturada ? 'bg-emerald-500/10' : enPista ? 'bg-amber-400/10' : 'bg-surface',
+                  ].join(' ')}
+                >
                   <div className="flex items-center gap-3">
                     <p className="typo-name text-base">{clase.categoria}</p>
                     {admiteInscripcion ? (
@@ -214,8 +240,19 @@ export function AdminCompetencia() {
                     ) : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="typo-caption text-gold">
-                      {clase.fase === 'inscripcion' ? 'Inscripción abierta' : etiquetaFase(clase.fase)}
+                    <span
+                      className={[
+                        'typo-caption',
+                        capturada ? 'font-medium text-emerald-300' : enPista ? 'font-medium text-amber-300' : 'text-gold',
+                      ].join(' ')}
+                    >
+                      {capturada
+                        ? 'Capturada'
+                        : enPista
+                          ? `En pista · ${etiquetaFase(clase.fase)}`
+                          : clase.fase === 'inscripcion'
+                            ? 'Inscripción abierta'
+                            : etiquetaFase(clase.fase)}
                     </span>
                     {!finalizada && porCerrar(clase) ? (
                       <button

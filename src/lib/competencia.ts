@@ -61,6 +61,8 @@ export interface Competencia {
   simulacion: boolean
   sincronizadoEn: string | null
   etiquetaJueces: EstiloJueces
+  /** Categoría que la mesa técnica tiene en pista. Null si no hay ninguna. */
+  claseActiva: string | null
 }
 
 export interface Inscripcion {
@@ -137,13 +139,14 @@ function mapCompetencia(row: Record<string, unknown>): Competencia {
     simulacion: Boolean(row.simulacion),
     sincronizadoEn: typeof row.sincronizado_en === 'string' ? row.sincronizado_en : null,
     etiquetaJueces: row.etiqueta_jueces === 'letra' ? 'letra' : 'numero',
+    claseActiva: typeof row.clase_activa === 'string' ? row.clase_activa : null,
   }
 }
 
 export async function listarCompetencias(): Promise<Competencia[]> {
   const { data, error } = await supabase
     .from('competencias')
-    .select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion, sincronizado_en, etiqueta_jueces')
+    .select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion, sincronizado_en, etiqueta_jueces, clase_activa')
     .order('fecha', { ascending: false })
   if (error) throw error
   return (data ?? []).map(mapCompetencia)
@@ -173,7 +176,7 @@ export async function crearCompetencia(input: {
 
 export async function cargarCompetencia(id: string): Promise<DetalleCompetencia | null> {
   const [competencia, clases, accesos] = await Promise.all([
-    supabase.from('competencias').select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion, sincronizado_en, etiqueta_jueces').eq('id', id).maybeSingle(),
+    supabase.from('competencias').select('id, programa_codigo, nombre, fecha, lugar, estado, simulacion, sincronizado_en, etiqueta_jueces, clase_activa').eq('id', id).maybeSingle(),
     supabase
       .from('juzgamientos')
       .select(
