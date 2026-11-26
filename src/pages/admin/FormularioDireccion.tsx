@@ -5,20 +5,22 @@ import { formatFechaEmision, formatFechaRegistro, formatNombre } from '../../lib
 
 const COLUMNAS = ['No.', 'Registro', 'Asoc.', 'Nombre', 'Sexo', 'Nacimiento', 'Padre', 'Madre', 'Criador', 'Propietario', 'Montador']
 
+/** Anchos como en la tabla de Libretas y cómputo, para que los nombres partan igual. */
+const ANCHOS = ['5%', '9%', '8%', '13%', '5%', '9%', '10%', '10%', '10%', '11%', '10%']
+
 /**
- * Misma hoja que «Libretas y cómputo»: doble marco, título en serif y filas
- * subrayadas. Sin relleno, para que la impresora no gaste tinta en el fondo.
+ * La misma tabla de «Libretas y cómputo», en hoja blanca. El estilo de impresión
+ * solo quita el relleno; no cambia el tipo ni el aire de las filas.
  */
 const ESTILO_IMPRESION = `
 @page {
   size: letter landscape;
-  margin: 8mm;
+  margin: 12mm;
 }
 @media print {
   html, body {
     background: #fff !important;
     background-image: none !important;
-    color: #1c1408 !important;
     print-color-adjust: economy !important;
     -webkit-print-color-adjust: economy !important;
   }
@@ -29,56 +31,23 @@ const ESTILO_IMPRESION = `
     display: block !important;
     position: static !important;
     width: auto !important;
-    height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     background: transparent !important;
     background-image: none !important;
     box-shadow: none !important;
     color: #1c1408 !important;
-    print-color-adjust: economy !important;
-    -webkit-print-color-adjust: economy !important;
   }
   #formulario-direccion, #formulario-direccion * {
     background: transparent !important;
     background-image: none !important;
     box-shadow: none !important;
     text-shadow: none !important;
-    color: #1c1408 !important;
-  }
-  #formulario-direccion .marco {
-    border: 2px solid #1c1408 !important;
-    border-radius: 12px;
-    padding: 4px;
-  }
-  #formulario-direccion .marco-interno {
-    border: 1px solid #1c1408 !important;
-    border-radius: 8px;
-    padding: 14px 16px 16px;
-  }
-  #formulario-direccion .sello {
-    border: 1px solid #1c1408 !important;
-  }
-  #formulario-direccion table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  #formulario-direccion th,
-  #formulario-direccion td {
-    border: none !important;
-    padding: 5px 6px;
-    font-size: 10px;
-    text-align: left;
-    vertical-align: top;
   }
   #formulario-direccion thead {
     display: table-header-group;
   }
-  #formulario-direccion thead tr {
-    border-bottom: 1.5px solid #1c1408 !important;
-  }
-  #formulario-direccion tbody tr {
-    border-bottom: 1px solid rgba(28, 20, 8, 0.28) !important;
+  #formulario-direccion tr {
     break-inside: avoid;
   }
 }
@@ -122,57 +91,55 @@ function FormularioDireccionImpreso({
   return createPortal(
     <>
       <style>{ESTILO_IMPRESION}</style>
-      <div id="formulario-direccion" className="hidden text-[#1c1408] print:block">
-        <div className="marco rounded-[12px] border-2 border-[#1c1408] p-1">
-          <div className="marco-interno rounded-[8px] border border-[#1c1408] px-4 py-5 sm:px-6">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <h1 className="font-display text-lg font-semibold uppercase leading-tight">Formulario dirección de eventos</h1>
-              <p className="sello shrink-0 border border-[#1c1408] px-2 py-1 text-center text-xs font-bold leading-tight">
-                FORMATO
-                <br />
-                CLASE
-              </p>
-            </div>
-            <div className="mb-4 space-y-1 text-sm">
-              <p>
-                Categoría: <strong className="uppercase">{categoria}</strong>
-              </p>
-              <p>
-                Ejemplares: <strong>{filas.length}</strong>
-              </p>
-              {contexto ? <p>{contexto}</p> : null}
-            </div>
-            <table className="w-full border-collapse text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#1c1408]">
-                  {COLUMNAS.map((columna) => (
-                    <th key={columna} className="px-2 py-2 font-semibold uppercase">
-                      {columna}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filas.map((fila) => (
-                  <tr key={fila.id} className="border-b border-[#1c1408]/30">
-                    <td className="px-2 py-2 font-semibold">{fila.numero ?? ''}</td>
-                    <td className="px-2 py-2">{fila.registro ?? ''}</td>
-                    <td className="px-2 py-2">{fila.asociacion ?? ''}</td>
-                    <td className="px-2 py-2 font-semibold uppercase">{texto(fila.nombre)}</td>
-                    <td className="px-2 py-2">{fila.sexo ?? ''}</td>
-                    <td className="px-2 py-2">{fila.nacimiento ? formatFechaRegistro(fila.nacimiento) : ''}</td>
-                    <td className="px-2 py-2">{texto(fila.padre)}</td>
-                    <td className="px-2 py-2">{texto(fila.madre)}</td>
-                    <td className="px-2 py-2">{texto(fila.criador)}</td>
-                    <td className="px-2 py-2">{texto(fila.propietario)}</td>
-                    <td className="px-2 py-2">{texto(fila.montador)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {filas.length === 0 ? <p className="mt-3 text-sm">Sin ejemplares inscritos.</p> : null}
+      <div id="formulario-direccion" className="hidden font-sans text-xs text-[#1c1408] print:block">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-lg font-semibold uppercase leading-tight">Formulario dirección de eventos</h1>
+            <p className="mt-2 text-sm">
+              <span className="font-semibold uppercase">{categoria}</span>
+              {contexto ? <span className="mt-0.5 block font-normal normal-case">{contexto}</span> : null}
+            </p>
           </div>
+          <p className="shrink-0 border border-[#1c1408] px-2 py-1 text-center text-xs font-bold leading-tight">
+            FORMATO
+            <br />
+            CLASE
+          </p>
         </div>
+        <table className="w-full table-fixed border-collapse text-left text-xs leading-5">
+          <colgroup>
+            {ANCHOS.map((ancho, indice) => (
+              <col key={indice} style={{ width: ancho }} />
+            ))}
+          </colgroup>
+          <thead>
+            <tr className="border-b border-[#1c1408]">
+              {COLUMNAS.map((columna) => (
+                <th key={columna} className="px-2 py-2 font-semibold uppercase">
+                  {columna}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((fila) => (
+              <tr key={fila.id} className="border-b border-[#1c1408]/20">
+                <td className="px-2 py-2 align-top font-semibold">{fila.numero ?? ''}</td>
+                <td className="px-2 py-2 align-top">{fila.registro ?? ''}</td>
+                <td className="px-2 py-2 align-top">{fila.asociacion ?? ''}</td>
+                <td className="px-2 py-2 align-top font-semibold uppercase">{texto(fila.nombre)}</td>
+                <td className="px-2 py-2 align-top">{fila.sexo ?? ''}</td>
+                <td className="px-2 py-2 align-top">{fila.nacimiento ? formatFechaRegistro(fila.nacimiento) : ''}</td>
+                <td className="px-2 py-2 align-top">{texto(fila.padre)}</td>
+                <td className="px-2 py-2 align-top">{texto(fila.madre)}</td>
+                <td className="px-2 py-2 align-top">{texto(fila.criador)}</td>
+                <td className="px-2 py-2 align-top">{texto(fila.propietario)}</td>
+                <td className="px-2 py-2 align-top">{texto(fila.montador)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filas.length === 0 ? <p className="mt-3 text-sm">Sin ejemplares inscritos.</p> : null}
       </div>
     </>,
     document.body,
