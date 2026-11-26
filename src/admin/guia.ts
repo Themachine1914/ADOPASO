@@ -362,6 +362,21 @@ export const GUIA: CategoriaGuia[] = [
         ],
       },
       {
+        pregunta: '¿Cómo se captura una categoría con una sola persona?',
+        respuesta:
+          'En la categoría, pulse «Captura manual». La misma persona hace la pre-pista, el formato A si aplica, quién pasa, las excusas, la votación y el cierre de la mesa. Cada paso anota a los ejemplares y a cada juez.',
+        pasos: [
+          'Si la categoría sigue en inscripción, pulse «Cerrar y numerar». El ejemplar más adulto lleva el 1.',
+          'Pulse «Sacar a pista» y diga si lleva Formato A.',
+          'En pre-pista ponga los números y marque cada ejemplar como «Confirmado» o «No asistió».',
+          'Si lleva Formato A, anote hasta 6 números de cada juez, finalice cada libreta y marque quién pasa. Basta con que un juez lo haya marcado.',
+          'En el recorrido anote la excusa de cada juez. Queda excusado con la mayoría: 2 de 3 o 3 de 5.',
+          'En la votación final anote el 1.º al 5.º de cada juez y finalice cada libreta.',
+          'Pulse «Finalizar categoría», revise la hoja de cómputo y pulse «Imprimir acta (PDF)».',
+        ],
+        nota: 'Hacen falta el código de la mesa técnica y el de cada juez: con esos se guarda lo que anota cada puesto. Sin el código de un juez no se puede anotar su formato A ni su votación.',
+      },
+      {
         pregunta: '¿Cada cuánto se actualizan las pantallas?',
         respuesta:
           'Cada 4 segundos, solas. Lo que marca la pre-pista o vota un juez aparece en la mesa técnica en ese tiempo, sin recargar la página.',
