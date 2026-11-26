@@ -548,22 +548,86 @@ export async function cargarProximaCompetencia(): Promise<CompetenciaResumen | n
   }
 }
 
+const LIMITE_BUSQUEDA = 60
+
+/** Minúsculas, sin acentos y con un solo espacio entre palabras, para comparar nombres. */
+function normalizar(valor: string | null | undefined): string {
+  return (valor ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Qué tan cerca está el caballo de lo que se buscó (menor = más arriba):
+ * 0 código exacto · 1 nombre exacto · 2 nombre que empieza así · 3 la palabra dentro del nombre ·
+ * 4 el texto dentro del nombre o del código · 5 es su padre o su madre · 6 expositor o criador.
+ */
+export function relevanciaCaballo(caballo: CaballoPublico, query: string): number {
+  const t = normalizar(query)
+  const nombre = normalizar(caballo.nombre)
+  const codigo = normalizar(caballo.codigo)
+  if (codigo === t) return 0
+  if (nombre === t) return 1
+  if (nombre.startsWith(t)) return 2
+  if (` ${nombre} `.includes(` ${t} `)) return 3
+  if (nombre.includes(t) || codigo.includes(t)) return 4
+  if (normalizar(caballo.padre).includes(t) || normalizar(caballo.madre).includes(t)) return 5
+  return 6
+}
+
+/** A partir de esta relevancia el resultado es «relacionado» (hijo, expositor, criador), no el caballo buscado. */
+export const RELEVANCIA_RELACIONADO = 5
+
 export async function buscarCaballos(query: string): Promise<CaballoPublico[]> {
-  let q = supabase
-    .from('caballo_publico')
-    .select(CAMPOS_CABALLO)
-    .order('nombre', { ascending: true })
-    .limit(60)
-  const termino = query.trim().replace(/[%*,]/g, ' ')
-  if (termino) {
-    const like = `%${termino}%`
-    q = q.or(
-      `nombre.ilike."${like}",codigo.ilike."${like}",expositor.ilike."${like}",criador.ilike."${like}",padre.ilike."${like}",madre.ilike."${like}"`,
-    )
+  const termino = query.trim().replace(/[%*,()"\\]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!termino) {
+    const { data, error } = await supabase
+      .from('caballo_publico')
+      .select(CAMPOS_CABALLO)
+      .order('nombre', { ascending: true })
+      .limit(LIMITE_BUSQUEDA)
+    if (error) throw error
+    return (data ?? []).map(mapCaballo)
   }
-  const { data, error } = await q
-  if (error) throw error
-  return (data ?? []).map(mapCaballo)
+
+  const like = `%${termino}%`
+  // Tres consultas para que el caballo buscado nunca quede fuera por el tope de resultados:
+  // el nombre o código exacto, los que lo llevan en el nombre o el código, y los relacionados.
+  const [exacto, enNombre, relacionados] = await Promise.all([
+    supabase
+      .from('caballo_publico')
+      .select(CAMPOS_CABALLO)
+      .or(`nombre.ilike."${termino}",codigo.ilike."${termino}"`)
+      .limit(10),
+    supabase
+      .from('caballo_publico')
+      .select(CAMPOS_CABALLO)
+      .or(`nombre.ilike."${like}",codigo.ilike."${like}"`)
+      .order('nombre', { ascending: true })
+      .limit(LIMITE_BUSQUEDA),
+    supabase
+      .from('caballo_publico')
+      .select(CAMPOS_CABALLO)
+      .or(`padre.ilike."${like}",madre.ilike."${like}",expositor.ilike."${like}",criador.ilike."${like}"`)
+      .order('nombre', { ascending: true })
+      .limit(LIMITE_BUSQUEDA),
+  ])
+  const fallo = exacto.error ?? enNombre.error ?? relacionados.error
+  if (fallo) throw fallo
+
+  const vistos = new Map<string, CaballoPublico>()
+  for (const fila of [...(exacto.data ?? []), ...(enNombre.data ?? []), ...(relacionados.data ?? [])]) {
+    const caballo = mapCaballo(fila)
+    if (!vistos.has(caballo.codigo)) vistos.set(caballo.codigo, caballo)
+  }
+  return [...vistos.values()]
+    .map((caballo) => ({ caballo, relevancia: relevanciaCaballo(caballo, termino) }))
+    .sort((a, b) => a.relevancia - b.relevancia || a.caballo.nombre.localeCompare(b.caballo.nombre, 'es'))
+    .slice(0, LIMITE_BUSQUEDA)
+    .map(({ caballo }) => caballo)
 }
 
 async function leerFicha(
