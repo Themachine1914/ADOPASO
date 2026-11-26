@@ -5,7 +5,10 @@ import { formatFechaEmision, formatFechaRegistro, formatNombre } from '../../lib
 
 const COLUMNAS = ['No.', 'Registro', 'Asoc.', 'Nombre', 'Sexo', 'Nacimiento', 'Padre', 'Madre', 'Criador', 'Propietario', 'Montador']
 
-/** Hoja en blanco: sin relleno, para que la impresora no gaste tinta en el fondo. */
+/**
+ * Misma hoja que «Libretas y cómputo»: doble marco, título en serif y filas
+ * subrayadas. Sin relleno, para que la impresora no gaste tinta en el fondo.
+ */
 const ESTILO_IMPRESION = `
 @page {
   size: letter landscape;
@@ -15,7 +18,7 @@ const ESTILO_IMPRESION = `
   html, body {
     background: #fff !important;
     background-image: none !important;
-    color: #000 !important;
+    color: #1c1408 !important;
     print-color-adjust: economy !important;
     -webkit-print-color-adjust: economy !important;
   }
@@ -31,8 +34,8 @@ const ESTILO_IMPRESION = `
     padding: 0 !important;
     background: transparent !important;
     background-image: none !important;
-    color: #000 !important;
     box-shadow: none !important;
+    color: #1c1408 !important;
     print-color-adjust: economy !important;
     -webkit-print-color-adjust: economy !important;
   }
@@ -41,7 +44,20 @@ const ESTILO_IMPRESION = `
     background-image: none !important;
     box-shadow: none !important;
     text-shadow: none !important;
-    color: #000 !important;
+    color: #1c1408 !important;
+  }
+  #formulario-direccion .marco {
+    border: 2px solid #1c1408 !important;
+    border-radius: 12px;
+    padding: 4px;
+  }
+  #formulario-direccion .marco-interno {
+    border: 1px solid #1c1408 !important;
+    border-radius: 8px;
+    padding: 14px 16px 16px;
+  }
+  #formulario-direccion .sello {
+    border: 1px solid #1c1408 !important;
   }
   #formulario-direccion table {
     width: 100%;
@@ -49,17 +65,20 @@ const ESTILO_IMPRESION = `
   }
   #formulario-direccion th,
   #formulario-direccion td {
-    border: 1px solid #000 !important;
-    padding: 3px 4px;
-    font-size: 9px;
-    font-weight: 400;
+    border: none !important;
+    padding: 5px 6px;
+    font-size: 10px;
     text-align: left;
     vertical-align: top;
   }
   #formulario-direccion thead {
     display: table-header-group;
   }
-  #formulario-direccion tr {
+  #formulario-direccion thead tr {
+    border-bottom: 1.5px solid #1c1408 !important;
+  }
+  #formulario-direccion tbody tr {
+    border-bottom: 1px solid rgba(28, 20, 8, 0.28) !important;
     break-inside: avoid;
   }
 }
@@ -68,22 +87,6 @@ const ESTILO_IMPRESION = `
 function texto(valor: string | null | undefined): string {
   const formateado = formatNombre(valor)
   return formateado === '—' ? '' : formateado
-}
-
-function sexo(valor: string | null): string {
-  if (!valor) return ''
-  switch (valor.trim().toLowerCase()) {
-    case 'h':
-    case 'f':
-    case 'hembra':
-    case 'yegua':
-      return 'Hembra'
-    case 'm':
-    case 'macho':
-      return 'Macho'
-    default:
-      return valor.trim()
-  }
 }
 
 function FormularioDireccionImpreso({
@@ -119,51 +122,57 @@ function FormularioDireccionImpreso({
   return createPortal(
     <>
       <style>{ESTILO_IMPRESION}</style>
-      <div id="formulario-direccion" className="hidden text-black print:block">
-        <div className="flex items-start justify-between gap-4 border-b border-black pb-2">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">ADOPASO</p>
-            <h1 className="mt-1 text-base font-semibold uppercase">Formulario dirección de eventos</h1>
-            <p className="mt-1 text-sm font-semibold uppercase">{categoria}</p>
-            {contexto ? <p className="text-xs">{contexto}</p> : null}
+      <div id="formulario-direccion" className="hidden text-[#1c1408] print:block">
+        <div className="marco rounded-[12px] border-2 border-[#1c1408] p-1">
+          <div className="marco-interno rounded-[8px] border border-[#1c1408] px-4 py-5 sm:px-6">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <h1 className="font-display text-lg font-semibold uppercase leading-tight">Formulario dirección de eventos</h1>
+              <p className="sello shrink-0 border border-[#1c1408] px-2 py-1 text-center text-xs font-bold leading-tight">
+                FORMATO
+                <br />
+                CLASE
+              </p>
+            </div>
+            <div className="mb-4 space-y-1 text-sm">
+              <p>
+                Categoría: <strong className="uppercase">{categoria}</strong>
+              </p>
+              <p>
+                Ejemplares: <strong>{filas.length}</strong>
+              </p>
+              {contexto ? <p>{contexto}</p> : null}
+            </div>
+            <table className="w-full border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#1c1408]">
+                  {COLUMNAS.map((columna) => (
+                    <th key={columna} className="px-2 py-2 font-semibold uppercase">
+                      {columna}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filas.map((fila) => (
+                  <tr key={fila.id} className="border-b border-[#1c1408]/30">
+                    <td className="px-2 py-2 font-semibold">{fila.numero ?? ''}</td>
+                    <td className="px-2 py-2">{fila.registro ?? ''}</td>
+                    <td className="px-2 py-2">{fila.asociacion ?? ''}</td>
+                    <td className="px-2 py-2 font-semibold uppercase">{texto(fila.nombre)}</td>
+                    <td className="px-2 py-2">{fila.sexo ?? ''}</td>
+                    <td className="px-2 py-2">{fila.nacimiento ? formatFechaRegistro(fila.nacimiento) : ''}</td>
+                    <td className="px-2 py-2">{texto(fila.padre)}</td>
+                    <td className="px-2 py-2">{texto(fila.madre)}</td>
+                    <td className="px-2 py-2">{texto(fila.criador)}</td>
+                    <td className="px-2 py-2">{texto(fila.propietario)}</td>
+                    <td className="px-2 py-2">{texto(fila.montador)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filas.length === 0 ? <p className="mt-3 text-sm">Sin ejemplares inscritos.</p> : null}
           </div>
-          <p className="shrink-0 border border-black px-2 py-1 text-center text-[10px] font-semibold leading-tight">
-            FORMATO
-            <br />
-            CLASE
-          </p>
         </div>
-        <table className="mt-3 w-full border-collapse text-left">
-          <thead>
-            <tr>
-              {COLUMNAS.map((columna) => (
-                <th key={columna} className="border border-black px-1 py-1 text-[9px] font-semibold uppercase">
-                  {columna}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((fila) => (
-              <tr key={fila.id}>
-                <td className="border border-black px-1 py-1 text-[9px] font-semibold">{fila.numero ?? ''}</td>
-                <td className="border border-black px-1 py-1 text-[9px]">{fila.registro ?? ''}</td>
-                <td className="border border-black px-1 py-1 text-[9px]">{fila.asociacion ?? ''}</td>
-                <td className="border border-black px-1 py-1 text-[9px] font-semibold uppercase">{texto(fila.nombre)}</td>
-                <td className="border border-black px-1 py-1 text-[9px]">{sexo(fila.sexo)}</td>
-                <td className="border border-black px-1 py-1 text-[9px]">
-                  {fila.nacimiento ? formatFechaRegistro(fila.nacimiento) : ''}
-                </td>
-                <td className="border border-black px-1 py-1 text-[9px]">{texto(fila.padre)}</td>
-                <td className="border border-black px-1 py-1 text-[9px]">{texto(fila.madre)}</td>
-                <td className="border border-black px-1 py-1 text-[9px]">{texto(fila.criador)}</td>
-                <td className="border border-black px-1 py-1 text-[9px]">{texto(fila.propietario)}</td>
-                <td className="border border-black px-1 py-1 text-[9px]">{texto(fila.montador)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filas.length === 0 ? <p className="mt-3 text-xs">Sin ejemplares inscritos.</p> : null}
       </div>
     </>,
     document.body,
