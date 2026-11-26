@@ -126,7 +126,7 @@ export function AdminCaptura() {
         <Link to={`/admin/competencias/${id}`} className="typo-meta font-medium text-gold hover:text-gold-soft">
           ← {estado.competencia.nombre}
         </Link>
-        <p className="typo-eyebrow mt-4">Captura manual</p>
+        <p className="typo-eyebrow mt-4">Introducir datos manual</p>
         <h1 className="typo-page mt-2">{clase.categoria}</h1>
         <p className="typo-lead mt-2">
           La pre-pista pone los números y confirma en su pantalla. Desde sacar a pista, una sola persona anota el

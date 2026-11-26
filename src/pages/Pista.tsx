@@ -810,7 +810,7 @@ function ElegirCategoria({ estado, codigo, hacer }: { estado: EstadoPista; codig
           {pendientes.map((clase) => (
             <option key={clase.id} value={clase.id}>
               {clase.categoria}
-              {clase.modoCaptura === 'manual' ? ' · captura manual' : ''} · {numerados(clase).length} ejemplares
+              {clase.modoCaptura === 'manual' ? ' · introducir datos manual' : ''} · {numerados(clase).length} ejemplares
             </option>
           ))}
         </select>

@@ -364,7 +364,7 @@ export const GUIA: CategoriaGuia[] = [
       {
         pregunta: '¿Cómo se captura una categoría con una sola persona?',
         respuesta:
-          'La pre-pista pone los números y confirma en su pantalla, como siempre. En la categoría, pulse «Captura manual» para sacar a pista y anotar el formato A si aplica, quién pasa, las excusas, la votación y el cierre.',
+          'La pre-pista pone los números y confirma en su pantalla, como siempre. En la categoría, pulse «Introducir datos manual» para sacar a pista y anotar el formato A si aplica, quién pasa, las excusas, la votación y el cierre.',
         pasos: [
           'Si la categoría sigue en inscripción, pulse «Cerrar y numerar». El ejemplar más adulto lleva el 1. La pre-pista puede cambiar esos números.',
           'La pre-pista confirma cada ejemplar en su pantalla.',
@@ -374,7 +374,7 @@ export const GUIA: CategoriaGuia[] = [
           'En la votación final anote el 1.º al 5.º de cada juez y finalice cada libreta.',
           'Pulse «Finalizar categoría», revise la hoja de cómputo y pulse «Imprimir acta (PDF)».',
         ],
-        nota: 'Hacen falta el código de la mesa técnica y el de cada juez: con esos se guarda lo que anota cada puesto. Sin el código de un juez no se puede anotar su formato A ni su votación. Sacar a pista deja la categoría en captura manual: jueces y mesa ya no pueden modificarla. La pre-pista sigue con los números y la asistencia. Si jueces o mesa ya empezaron en vivo, la captura manual no se abre. «Cerrar y numerar» no elige el camino.',
+        nota: 'Hacen falta el código de la mesa técnica y el de cada juez: con esos se guarda lo que anota cada puesto. Sin el código de un juez no se puede anotar su formato A ni su votación. Sacar a pista abre «Introducir datos manual»: jueces y mesa ya no pueden modificarla. La pre-pista sigue con los números y la asistencia. Si jueces o mesa ya empezaron en vivo, «Introducir datos manual» no se abre. «Cerrar y numerar» no elige el camino.',
       },
       {
         pregunta: '¿Cada cuánto se actualizan las pantallas?',

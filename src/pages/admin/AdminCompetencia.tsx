@@ -260,14 +260,14 @@ export function AdminCompetencia() {
                         className="typo-btn rounded-[10px] border border-border px-3 py-1.5 text-sm text-muted disabled:opacity-60"
                         title="Esta categoría ya se está juzgando en vivo. No se puede capturar a mano."
                       >
-                        Captura manual
+                        Introducir datos manual
                       </button>
                     ) : (
                       <Link
                         to={`/admin/competencias/${competencia.id}/captura/${clase.id}`}
                         className="typo-btn rounded-[10px] bg-gold px-3 py-1.5 text-sm text-bg"
                       >
-                        Captura manual
+                        Introducir datos manual
                       </Link>
                     )}
                     <Link to={`/admin/juzgamiento/${clase.id}`} className="typo-meta underline">
