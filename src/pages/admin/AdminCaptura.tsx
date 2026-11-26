@@ -16,8 +16,6 @@ import {
   juezFinalizo,
   mayoriaJueces,
   numerarCategoria,
-  pistaAsignarNumeros,
-  pistaAsistencia,
   pistaElegirClase,
   pistaEscoger,
   pistaExcusaVoto,
@@ -25,7 +23,6 @@ import {
   pistaFinalizarVotacion,
   pistaFormatoA,
   pistaLlevaFormatoA,
-  pistaNumeroEjemplar,
   pistaReabrirVotacion,
   pistaVotar,
   type ClasePista,
@@ -132,8 +129,8 @@ export function AdminCaptura() {
         <p className="typo-eyebrow mt-4">Captura manual</p>
         <h1 className="typo-page mt-2">{clase.categoria}</h1>
         <p className="typo-lead mt-2">
-          Una sola persona recorre la categoría: pre-pista, formato A si aplica, quién pasa, las excusas, la votación y
-          el cierre de la mesa.
+          La pre-pista pone los números y confirma en su pantalla. Desde sacar a pista, una sola persona anota el
+          formato A si aplica, quién pasa, las excusas, la votación y el cierre.
         </p>
         {error ? <p className="typo-meta mt-3 text-flag-red">{error}</p> : null}
       </div>
@@ -174,7 +171,7 @@ function PasoAbrir({ clase, estado, hacer }: PasoBase) {
     <section className="space-y-4">
       <Encabezado
         titulo="Abrir la categoría"
-        texto="Se cierra la inscripción y se numera: el ejemplar más adulto lleva el 1. Después se saca a pista y se recorre el resto aquí mismo."
+        texto="Se cierra la inscripción y se numera desde el 1. La pre-pista puede cambiar esos números y confirma en su pantalla. Aquí se sigue desde sacar a pista."
       />
       <ListaEjemplares estado={estado} lista={lista} />
       <button
@@ -198,7 +195,7 @@ function PasoSacar({ clase, estado, mesa, hacer, otra }: PasoBase & { otra: stri
     <section className="space-y-4">
       <Encabezado
         titulo="Sacar a pista"
-        texto="Diga si esta categoría lleva Formato A. Sin Formato A, los confirmados en pre-pista pasan directo al recorrido individual."
+        texto="La pre-pista ya puede haber puesto los números. Al sacarla, confirma la asistencia en su pantalla. Sin Formato A, los confirmados pasan directo al recorrido."
       />
       {otra ? (
         <p className="typo-meta text-flag-red">{otra} sigue en pista. Finalícela antes de sacar esta categoría.</p>
@@ -402,52 +399,32 @@ function FormatoToggle({ clase, mesa, hacer }: PasoBase) {
 }
 
 function PasoPrepista(base: PasoBase) {
-  const { clase, estado, mesa, hacer } = base
+  const { clase, estado } = base
   const lista = [...clase.ejemplares].sort((a, b) => (a.numero ?? 9999) - (b.numero ?? 9999))
   const presentes = lista.filter((item) => item.asistio === true).length
-  const sinNumero = lista.filter((item) => item.numero == null)
-  const sinMontador = lista.some((item) => !item.montador?.trim())
+  const sinNumero = lista.filter((item) => item.numero == null).length
+  const sinMarca = lista.filter((item) => item.numero != null && item.asistio == null).length
   return (
     <section className="space-y-4">
       <Encabezado
         titulo="Pre-pista"
-        texto={
-          clase.conFormatoA
-            ? 'Ponga el número de cada ejemplar y marque si está confirmado o no asistió. El que no asistió no se puede marcar ni votar.'
-            : 'Ponga el número de cada ejemplar y marque la asistencia. Al abrir el recorrido pasan todos los confirmados.'
-        }
+        texto="Los números y la asistencia los anota la pre-pista en su pantalla. Cuando cada ejemplar con número esté confirmado o como no asistió, siga al paso siguiente."
       />
       <p className="typo-meta">
         {presentes} de {lista.length} confirmados.
-        {sinMontador ? ' Sin montador, esa persona no recibe sus puntos.' : ''}
+        {sinNumero > 0 ? ` ${sinNumero} sin número.` : ''}
+        {sinMarca > 0 ? ` ${sinMarca} sin marcar asistencia.` : ''}
       </p>
-      {sinNumero.length > 0 ? (
-        <button type="button" className="typo-meta underline" onClick={() => void hacer(() => numerarCategoria(clase.id))}>
-          Numerar los {sinNumero.length} inscritos sin número
-        </button>
-      ) : null}
-      <Numeros clase={clase} mesa={mesa} hacer={hacer} />
       <ul className="divide-y divide-border overflow-hidden rounded-[12px] border border-border">
         {lista.map((item) => (
           <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 bg-surface px-4 py-3">
             <div className="flex items-center gap-3">
-              <Numero key={`${item.id}-${item.numero ?? 's'}`} mesa={mesa} clase={clase} item={item} hacer={hacer} />
+              <span className="w-10 text-center font-display text-2xl font-semibold text-gold">{item.numero ?? '—'}</span>
               <Ficha item={item} fecha={estado.competencia.fecha} />
             </div>
-            <div className="flex gap-2">
-              <Marca
-                activo={item.asistio === true}
-                onClick={() => void hacer(() => pistaAsistencia(mesa, item.id!, item.asistio === true ? null : true, true))}
-              >
-                Confirmado
-              </Marca>
-              <Marca
-                activo={item.asistio === false}
-                onClick={() => void hacer(() => pistaAsistencia(mesa, item.id!, item.asistio === false ? null : false, true))}
-              >
-                No asistió
-              </Marca>
-            </div>
+            <span className={item.asistio == null ? 'typo-caption text-muted' : 'typo-caption font-medium text-gold'}>
+              {item.asistio === true ? 'Confirmado' : item.asistio === false ? 'No asistió' : 'Sin marcar'}
+            </span>
           </li>
         ))}
       </ul>
@@ -814,115 +791,6 @@ function AvisoJueces({ estado }: PasoBase) {
   )
 }
 
-function Numeros({ clase, mesa, hacer }: { clase: ClasePista; mesa: string; hacer: Hacer }) {
-  const [porEdadAbierto, setPorEdadAbierto] = useState(false)
-  if (porEdadAbierto) {
-    return <RepartirPorEdad clase={clase} mesa={mesa} hacer={hacer} onListo={() => setPorEdadAbierto(false)} />
-  }
-  return (
-    <button type="button" className="typo-meta underline" onClick={() => setPorEdadAbierto(true)}>
-      Repartir varios números por edad
-    </button>
-  )
-}
-
-function Numero({ mesa, clase, item, hacer }: { mesa: string; clase: ClasePista; item: EjemplarPista; hacer: Hacer }) {
-  const [texto, setTexto] = useState(String(item.numero ?? ''))
-  return (
-    <input
-      aria-label={`Número de ${item.nombre ?? item.numero}`}
-      inputMode="numeric"
-      value={texto}
-      onChange={(e) => setTexto(e.target.value.replace(/\D/g, '').slice(0, 4))}
-      onBlur={() => {
-        const numero = Number(texto)
-        if (!numero || numero === item.numero || !item.id) {
-          setTexto(String(item.numero ?? ''))
-          return
-        }
-        const ocupado = clase.ejemplares.find((otro) => otro.id !== item.id && otro.numero === numero)
-        if (ocupado) {
-          const aviso =
-            item.numero != null
-              ? `El ${numero} lo tiene ${formatNombre(ocupado.nombre)}. ¿Intercambiar? Se queda con el ${item.numero}.`
-              : `El ${numero} lo tiene ${formatNombre(ocupado.nombre)}. ¿Quitárselo? Se queda sin número.`
-          if (!window.confirm(aviso)) {
-            setTexto(String(item.numero ?? ''))
-            return
-          }
-        }
-        void hacer(() => pistaNumeroEjemplar(mesa, clase.id, item.id!, numero, true)).then((guardo) => {
-          if (!guardo) setTexto(String(item.numero ?? ''))
-        })
-      }}
-      className="w-14 rounded-[8px] border border-border bg-bg px-2 py-1 text-center font-display text-xl font-semibold text-gold"
-    />
-  )
-}
-
-function RepartirPorEdad({
-  clase,
-  mesa,
-  hacer,
-  onListo,
-}: {
-  clase: ClasePista
-  mesa: string
-  hacer: Hacer
-  onListo: () => void
-}) {
-  const [texto, setTexto] = useState('')
-  const ordenados = [...clase.ejemplares].sort(porEdad)
-  const numeros = leerNumeros(texto)
-  const faltan = ordenados.length - numeros.length
-  return (
-    <div className="rounded-[12px] border border-gold/60 bg-surface p-4">
-      <p className="typo-name text-base">Números por edad</p>
-      <p className="typo-meta mt-1">
-        Escriba los {ordenados.length} números, separados por coma (también vale un rango, por ejemplo 20-25). El menor
-        va al ejemplar más adulto.
-      </p>
-      <input
-        aria-label="Números disponibles"
-        inputMode="numeric"
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
-        placeholder="Ej.: 7, 12, 15"
-        className="mt-3 w-full rounded-[10px] border border-border bg-bg px-3 py-3 text-ink"
-      />
-      <ul className="mt-3 divide-y divide-border rounded-[10px] border border-border">
-        {ordenados.map((item, indice) => (
-          <li key={item.id} className="flex items-center gap-3 px-3 py-2">
-            <span className="w-10 text-center font-display text-xl font-semibold text-gold">{numeros[indice] ?? '—'}</span>
-            <span className="typo-name text-sm">{formatNombre(item.nombre)}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="typo-meta mt-2">
-        {faltan > 0 ? `Faltan ${faltan} números.` : faltan < 0 ? `Sobran ${-faltan} números.` : 'Listo para guardar.'}
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={faltan !== 0}
-          className="typo-btn rounded-[10px] bg-gold px-4 py-2 text-bg disabled:opacity-50"
-          onClick={() => {
-            if (!window.confirm(`¿Guardar los números ${numeros.join(', ')}?`)) return
-            void hacer(async () => {
-              await pistaAsignarNumeros(mesa, clase.id, numeros, true)
-              onListo()
-            })
-          }}
-        >
-          Guardar números
-        </button>
-        <button type="button" className="typo-btn rounded-[10px] border border-border px-4 py-2" onClick={onListo}>
-          Volver a uno por uno
-        </button>
-      </div>
-    </div>
-  )
-}
 
 function ListaEjemplares({ lista, estado }: { estado: EstadoPista; lista: EjemplarPista[] }) {
   if (lista.length === 0) return <p className="typo-meta">Todavía no hay ejemplares en esta categoría.</p>
@@ -963,21 +831,6 @@ function Encabezado({ titulo, texto }: { titulo: string; texto: string }) {
   )
 }
 
-function Marca({ activo, disabled, onClick, children }: { activo: boolean; disabled?: boolean; onClick: () => void; children: string }) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={[
-        'typo-btn rounded-[10px] border px-3 py-2 disabled:opacity-40',
-        activo ? 'border-gold bg-gold text-bg' : 'border-border text-ink',
-      ].join(' ')}
-    >
-      {children}
-    </button>
-  )
-}
 
 function Narrador({
   clase,
@@ -1198,29 +1051,3 @@ function nombreJuez(estado: EstadoPista, puesto: number, estilo: EstiloJueces): 
   return nombre ? `${etiqueta} · ${formatNombre(nombre)}` : etiqueta
 }
 
-function porEdad(a: EjemplarPista, b: EjemplarPista): number {
-  if (a.nacimiento !== b.nacimiento) {
-    if (!a.nacimiento) return 1
-    if (!b.nacimiento) return -1
-    return a.nacimiento < b.nacimiento ? -1 : 1
-  }
-  const na = a.nombre ?? ''
-  const nb = b.nombre ?? ''
-  if (na !== nb) return na < nb ? -1 : 1
-  return (a.id ?? '') < (b.id ?? '') ? -1 : 1
-}
-
-function leerNumeros(texto: string): number[] {
-  const numeros = new Set<number>()
-  for (const parte of texto.split(/[\s,;]+/)) {
-    const rango = parte.match(/^(\d+)-(\d+)$/)
-    if (rango) {
-      const desde = Number(rango[1])
-      const hasta = Number(rango[2])
-      for (let n = Math.min(desde, hasta); n <= Math.max(desde, hasta) && numeros.size < 500; n++) numeros.add(n)
-    } else if (/^\d+$/.test(parte)) {
-      numeros.add(Number(parte))
-    }
-  }
-  return [...numeros].filter((n) => n > 0).sort((a, b) => a - b)
-}

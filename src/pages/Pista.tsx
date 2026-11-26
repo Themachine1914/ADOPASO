@@ -317,7 +317,6 @@ function AvisoCapturaManual() {
 }
 
 function PrePista({ clase, codigo, hacer }: { clase: ClasePista; codigo: string; hacer: Hacer }) {
-  if (clase.modoCaptura === 'manual') return <AvisoCapturaManual />
   const abierta = clase.fase === 'prepista' || clase.fase === 'formato_a'
   const lista = numerados(clase)
   const presentes = lista.filter((item) => item.asistio === true).length
@@ -615,7 +614,6 @@ function AsignarNumeros({ clase, codigo, hacer }: { clase: ClasePista; codigo: s
     setAbierto(false)
     setPorEdadAbierto(false)
   }, [clase.id])
-  if (clase.modoCaptura === 'manual') return <AvisoCapturaManual />
   if (!abierto) {
     return (
       <button
