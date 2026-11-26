@@ -308,7 +308,16 @@ function Boton({
 // Pre-pista
 // ---------------------------------------------------------------------------
 
+function AvisoCapturaManual() {
+  return (
+    <p className="typo-lead mt-6 rounded-[12px] border border-gold/40 bg-surface px-4 py-4">
+      Esta categoría se está capturando a mano. Los puestos no pueden modificarla.
+    </p>
+  )
+}
+
 function PrePista({ clase, codigo, hacer }: { clase: ClasePista; codigo: string; hacer: Hacer }) {
+  if (clase.modoCaptura === 'manual') return <AvisoCapturaManual />
   const abierta = clase.fase === 'prepista' || clase.fase === 'formato_a'
   const lista = numerados(clase)
   const presentes = lista.filter((item) => item.asistio === true).length
@@ -448,6 +457,7 @@ function ExcusasJuez({
 
 function Juez({ clase, estado, codigo, hacer }: { clase: ClasePista; estado: EstadoPista; codigo: string; hacer: Hacer }) {
   const puesto = estado.juezPuesto ?? 0
+  if (clase.modoCaptura === 'manual') return <AvisoCapturaManual />
 
   if (clase.fase === 'formato_a') {
     const finalizado = juezFinalizo(clase, puesto, 'formato_a')
@@ -605,6 +615,7 @@ function AsignarNumeros({ clase, codigo, hacer }: { clase: ClasePista; codigo: s
     setAbierto(false)
     setPorEdadAbierto(false)
   }, [clase.id])
+  if (clase.modoCaptura === 'manual') return <AvisoCapturaManual />
   if (!abierto) {
     return (
       <button
@@ -800,19 +811,21 @@ function ElegirCategoria({ estado, codigo, hacer }: { estado: EstadoPista; codig
         >
           {pendientes.map((clase) => (
             <option key={clase.id} value={clase.id}>
-              {clase.categoria} · {numerados(clase).length} ejemplares
+              {clase.categoria}
+              {clase.modoCaptura === 'manual' ? ' · captura manual' : ''} · {numerados(clase).length} ejemplares
             </option>
           ))}
         </select>
         <button
           type="button"
-          disabled={!valor || preguntar}
+          disabled={!valor || preguntar || claseElegida?.modoCaptura === 'manual'}
           className="typo-btn rounded-[10px] bg-gold px-4 py-3 text-bg disabled:opacity-50"
           onClick={() => setPreguntar(true)}
         >
           Sacar a pista
         </button>
       </div>
+      {claseElegida?.modoCaptura === 'manual' ? <AvisoCapturaManual /> : null}
       {preguntar && claseElegida ? (
         <div role="alertdialog" className="mt-4 rounded-[12px] border border-gold bg-bg p-4">
           <p className="typo-name text-base">¿{claseElegida.categoria} lleva Formato A?</p>
@@ -983,6 +996,8 @@ function Mesa({
 
   const faseJuez: 'formato_a' | 'votacion' | null =
     clase.fase === 'formato_a' ? 'formato_a' : clase.fase === 'votacion' ? 'votacion' : null
+
+  if (clase.modoCaptura === 'manual') return <AvisoCapturaManual />
 
   return (
     <div className="space-y-8">

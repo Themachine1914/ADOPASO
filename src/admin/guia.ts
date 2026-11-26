@@ -374,7 +374,7 @@ export const GUIA: CategoriaGuia[] = [
           'En la votación final anote el 1.º al 5.º de cada juez y finalice cada libreta.',
           'Pulse «Finalizar categoría», revise la hoja de cómputo y pulse «Imprimir acta (PDF)».',
         ],
-        nota: 'Hacen falta el código de la mesa técnica y el de cada juez: con esos se guarda lo que anota cada puesto. Sin el código de un juez no se puede anotar su formato A ni su votación.',
+        nota: 'Hacen falta el código de la mesa técnica y el de cada juez: con esos se guarda lo que anota cada puesto. Sin el código de un juez no se puede anotar su formato A ni su votación. La primera anotación deja la categoría en captura manual o en vivo, y el otro camino ya no puede modificarla. «Cerrar y numerar» no elige el camino.',
       },
       {
         pregunta: '¿Cada cuánto se actualizan las pantallas?',

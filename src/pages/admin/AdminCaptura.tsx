@@ -138,7 +138,11 @@ export function AdminCaptura() {
         {error ? <p className="typo-meta mt-3 text-flag-red">{error}</p> : null}
       </div>
 
-      {clase.fase === 'inscripcion' ? (
+      {clase.modoCaptura === 'en_vivo' ? (
+        <p className="typo-lead rounded-[12px] border border-gold/40 bg-surface px-4 py-4">
+          Esta categoría ya se está juzgando en vivo. No se puede capturar a mano.
+        </p>
+      ) : clase.fase === 'inscripcion' ? (
         <PasoAbrir {...base} />
       ) : !enPista && clase.fase === 'cerrada' ? (
         <PasoCierre {...base} />
@@ -226,8 +230,8 @@ function PasoSacar({ clase, estado, mesa, hacer, otra }: PasoBase & { otra: stri
               className="typo-btn rounded-[10px] bg-gold px-4 py-2 text-bg"
               onClick={() =>
                 void hacer(async () => {
-                  await pistaElegirClase(mesa, clase.id)
-                  await pistaLlevaFormatoA(mesa, clase.id, true)
+                  await pistaElegirClase(mesa, clase.id, true)
+                  await pistaLlevaFormatoA(mesa, clase.id, true, true)
                 })
               }
             >
@@ -238,8 +242,8 @@ function PasoSacar({ clase, estado, mesa, hacer, otra }: PasoBase & { otra: stri
               className="typo-btn rounded-[10px] border border-gold px-4 py-2 text-gold"
               onClick={() =>
                 void hacer(async () => {
-                  await pistaElegirClase(mesa, clase.id)
-                  await pistaLlevaFormatoA(mesa, clase.id, false)
+                  await pistaElegirClase(mesa, clase.id, true)
+                  await pistaLlevaFormatoA(mesa, clase.id, false, true)
                 })
               }
             >
@@ -266,7 +270,7 @@ function PasoRetomar({ clase, mesa, hacer, otra }: PasoBase & { otra: string | n
       <button
         type="button"
         className="typo-btn rounded-[10px] bg-gold px-4 py-2.5 text-bg"
-        onClick={() => void hacer(() => pistaElegirClase(mesa, clase.id))}
+        onClick={() => void hacer(() => pistaElegirClase(mesa, clase.id, true))}
       >
         Volver a pista
       </button>
@@ -295,7 +299,7 @@ function Flujo({
       return
     }
     onBloqueo(null)
-    void base.hacer(() => pistaFase(base.mesa, clase.id, destino))
+    void base.hacer(() => pistaFase(base.mesa, clase.id, destino, true))
   }
 
   const indice = fases.findIndex((fase) => fase.value === clase.fase)
@@ -374,7 +378,7 @@ function FormatoToggle({ clase, mesa, hacer }: PasoBase) {
               clase.fase === 'individual'
                 ? '¿Habilitar Formato A? La categoría vuelve al Formato A y hay que escoger de nuevo quién pasa.'
                 : '¿Habilitar Formato A en esta categoría?'
-            if (window.confirm(texto)) void hacer(() => pistaLlevaFormatoA(mesa, clase.id, true))
+            if (window.confirm(texto)) void hacer(() => pistaLlevaFormatoA(mesa, clase.id, true, true))
           }}
         >
           Habilitar Formato A
@@ -386,7 +390,7 @@ function FormatoToggle({ clase, mesa, hacer }: PasoBase) {
           className="ml-3 underline"
           onClick={() => {
             if (window.confirm('¿Quitar el Formato A? Pasarán todos los confirmados en pre-pista.')) {
-              void hacer(() => pistaLlevaFormatoA(mesa, clase.id, false))
+              void hacer(() => pistaLlevaFormatoA(mesa, clase.id, false, true))
             }
           }}
         >
@@ -433,13 +437,13 @@ function PasoPrepista(base: PasoBase) {
             <div className="flex gap-2">
               <Marca
                 activo={item.asistio === true}
-                onClick={() => void hacer(() => pistaAsistencia(mesa, item.id!, item.asistio === true ? null : true))}
+                onClick={() => void hacer(() => pistaAsistencia(mesa, item.id!, item.asistio === true ? null : true, true))}
               >
                 Confirmado
               </Marca>
               <Marca
                 activo={item.asistio === false}
-                onClick={() => void hacer(() => pistaAsistencia(mesa, item.id!, item.asistio === false ? null : false))}
+                onClick={() => void hacer(() => pistaAsistencia(mesa, item.id!, item.asistio === false ? null : false, true))}
               >
                 No asistió
               </Marca>
@@ -496,7 +500,7 @@ function PasoFormatoA(base: PasoBase) {
                           disabled={finalizado || !codigo || (!marcado && propios >= MAXIMO_FORMATO_A)}
                           onChange={() => {
                             if (!codigo) return
-                            void hacer(() => pistaFormatoA(codigo, clase.id, item.numero!, !marcado))
+                            void hacer(() => pistaFormatoA(codigo, clase.id, item.numero!, !marcado, true))
                           }}
                         />
                       </td>
@@ -574,7 +578,7 @@ function PasoVotacion(base: PasoBase) {
                           onChange={(e) => {
                             if (!codigo) return
                             const numero = e.target.value ? Number(e.target.value) : null
-                            void hacer(() => pistaVotar(codigo, clase.id, lugar, numero))
+                            void hacer(() => pistaVotar(codigo, clase.id, lugar, numero, true))
                           }}
                           className="rounded-[8px] border border-border bg-bg px-2 py-2 text-ink"
                         >
@@ -669,7 +673,7 @@ function QuienPasa({ clase, mesa, hacer }: PasoBase) {
                 type="checkbox"
                 checked={item.escogido}
                 disabled={!puedeMarcar}
-                onChange={(e) => void hacer(() => pistaEscoger(mesa, item.id!, e.target.checked))}
+                onChange={(e) => void hacer(() => pistaEscoger(mesa, item.id!, e.target.checked, true))}
               />
               Pasa
             </label>
@@ -686,7 +690,7 @@ function QuienPasa({ clase, mesa, hacer }: PasoBase) {
                 if (!item.id) continue
                 const marcado = clase.formatoA.some((marca) => marca.numero === item.numero)
                 const debe = marcado && item.asistio !== false && !item.excusa
-                if (debe !== item.escogido) await pistaEscoger(mesa, item.id, debe)
+                if (debe !== item.escogido) await pistaEscoger(mesa, item.id, debe, true)
               }
             })
           }
@@ -736,7 +740,7 @@ function Excusas({ clase, estado, estilo, codigos, hacer }: PasoBase) {
                       onChange={(e) => {
                         if (!codigo) return
                         const motivo = (e.target.value || null) as Excusa | null
-                        void hacer(() => pistaExcusaVoto(codigo, clase.id, item.numero!, motivo))
+                        void hacer(() => pistaExcusaVoto(codigo, clase.id, item.numero!, motivo, true))
                       }}
                       className="mt-1 block rounded-[8px] border border-border bg-bg px-2 py-2 text-ink"
                     >
@@ -778,7 +782,7 @@ function Libretas({ clase, estado, estilo, mesa, codigos, hacer, fase, titulo }:
             key={puesto}
             type="button"
             className="typo-meta underline"
-            onClick={() => void hacer(() => pistaReabrirVotacion(mesa, clase.id, puesto))}
+            onClick={() => void hacer(() => pistaReabrirVotacion(mesa, clase.id, puesto, true))}
           >
             Reabrir {etiquetaJuez(puesto, estilo)}
           </button>
@@ -789,7 +793,7 @@ function Libretas({ clase, estado, estilo, mesa, codigos, hacer, fase, titulo }:
             className="typo-btn rounded-[10px] border border-gold px-3 py-2 text-gold"
             onClick={() => {
               if (!window.confirm(`¿Finalizar ${titulo} de ${nombreJuez(estado, puesto, estilo)}?`)) return
-              void hacer(() => pistaFinalizarVotacion(codigo, clase.id))
+              void hacer(() => pistaFinalizarVotacion(codigo, clase.id, true))
             }}
           >
             Finalizar {etiquetaJuez(puesto, estilo)}
@@ -847,7 +851,7 @@ function Numero({ mesa, clase, item, hacer }: { mesa: string; clase: ClasePista;
             return
           }
         }
-        void hacer(() => pistaNumeroEjemplar(mesa, clase.id, item.id!, numero)).then((guardo) => {
+        void hacer(() => pistaNumeroEjemplar(mesa, clase.id, item.id!, numero, true)).then((guardo) => {
           if (!guardo) setTexto(String(item.numero ?? ''))
         })
       }}
@@ -905,7 +909,7 @@ function RepartirPorEdad({
           onClick={() => {
             if (!window.confirm(`¿Guardar los números ${numeros.join(', ')}?`)) return
             void hacer(async () => {
-              await pistaAsignarNumeros(mesa, clase.id, numeros)
+              await pistaAsignarNumeros(mesa, clase.id, numeros, true)
               onListo()
             })
           }}

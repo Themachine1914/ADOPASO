@@ -78,11 +78,16 @@ export interface Inscripcion {
   asistio: boolean | null
 }
 
+/** manual: una persona captura la categoría. en_vivo: pre-pista, jueces y mesa. */
+export type ModoCaptura = 'manual' | 'en_vivo'
+
 export interface ClaseCompetencia {
   id: string
   eventoCodigo: number | null
   categoria: string
   fase: Fase
+  /** Nulo hasta la primera anotación de verdad. Numerar no lo fija. */
+  modoCaptura: ModoCaptura | null
   inscritos: Inscripcion[]
 }
 
@@ -180,7 +185,7 @@ export async function cargarCompetencia(id: string): Promise<DetalleCompetencia 
     supabase
       .from('juzgamientos')
       .select(
-        'id, evento_codigo, categoria, fase, orden, juzgamiento_ejemplares (id, numero, caballo_codigo, nombre, sexo, nacimiento, propietario, montador, pagado, asistio)',
+        'id, evento_codigo, categoria, fase, orden, modo_captura, juzgamiento_ejemplares (id, numero, caballo_codigo, nombre, sexo, nacimiento, propietario, montador, pagado, asistio)',
       )
       .eq('competencia_id', id)
       .order('orden', { ascending: true }),
@@ -197,6 +202,7 @@ export async function cargarCompetencia(id: string): Promise<DetalleCompetencia 
       eventoCodigo: row.evento_codigo == null ? null : Number(row.evento_codigo),
       categoria: String(row.categoria ?? ''),
       fase: String(row.fase) as Fase,
+      modoCaptura: modoCapturaDe(row.modo_captura),
       inscritos: ((row.juzgamiento_ejemplares ?? []) as Record<string, unknown>[])
         .map((e) => ({
           id: String(e.id),
@@ -648,6 +654,8 @@ export interface ClasePista {
   fase: Fase
   /** Falso cuando la mesa decidió que la categoría no lleva Formato A: pasan todos los presentes. */
   conFormatoA: boolean
+  /** Nulo hasta la primera anotación. Después no cambia. */
+  modoCaptura: ModoCaptura | null
   ejemplares: EjemplarPista[]
   formatoA: Array<{ juezPuesto: number; numero: number }>
   votos: Array<{ juezPuesto: number; lugar: string; numero: number }>
@@ -784,6 +792,10 @@ function mensaje(error: { message: string }): Error {
   return new Error(error.message)
 }
 
+function modoCapturaDe(valor: unknown): ModoCaptura | null {
+  return valor === 'manual' || valor === 'en_vivo' ? valor : null
+}
+
 export function limpiarCodigo(codigo: string): string {
   return codigo.replace(/[^a-z0-9]/gi, '').toUpperCase()
 }
@@ -799,73 +811,121 @@ export async function estadoPista(codigo: string): Promise<EstadoPista> {
     clases: estado.clases.map((clase) => ({
       ...clase,
       conFormatoA: clase.conFormatoA ?? true,
+      modoCaptura: modoCapturaDe(clase.modoCaptura),
       excusasVotos: clase.excusasVotos ?? [],
       finalizados: clase.finalizados ?? [],
     })),
   }
 }
 
-export async function pistaAsistencia(codigo: string, ejemplarId: string, asistio: boolean | null): Promise<void> {
+export async function pistaAsistencia(
+  codigo: string,
+  ejemplarId: string,
+  asistio: boolean | null,
+  manual = false,
+): Promise<void> {
   const { error } = await supabase.rpc('acceso_asistencia', {
     p_codigo: codigo,
     p_ejemplar: ejemplarId,
     p_asistio: asistio,
+    p_manual: manual,
   })
   if (error) throw mensaje(error)
 }
 
-export async function pistaFormatoA(codigo: string, claseId: string, numero: number, marcado: boolean): Promise<void> {
+export async function pistaFormatoA(
+  codigo: string,
+  claseId: string,
+  numero: number,
+  marcado: boolean,
+  manual = false,
+): Promise<void> {
   const { error } = await supabase.rpc('acceso_formato_a', {
     p_codigo: codigo,
     p_clase: claseId,
     p_numero: numero,
     p_marcado: marcado,
+    p_manual: manual,
   })
   if (error) throw mensaje(error)
 }
 
-export async function pistaVotar(codigo: string, claseId: string, lugar: string, numero: number | null): Promise<void> {
+export async function pistaVotar(
+  codigo: string,
+  claseId: string,
+  lugar: string,
+  numero: number | null,
+  manual = false,
+): Promise<void> {
   const { error } = await supabase.rpc('acceso_votar', {
     p_codigo: codigo,
     p_clase: claseId,
     p_lugar: lugar,
     p_numero: numero,
+    p_manual: manual,
   })
   if (error) throw mensaje(error)
 }
 
-export async function pistaEscoger(codigo: string, ejemplarId: string, escogido: boolean): Promise<void> {
+export async function pistaEscoger(codigo: string, ejemplarId: string, escogido: boolean, manual = false): Promise<void> {
   const { error } = await supabase.rpc('acceso_escoger', {
     p_codigo: codigo,
     p_ejemplar: ejemplarId,
     p_escogido: escogido,
+    p_manual: manual,
   })
   if (error) throw mensaje(error)
 }
 
-export async function pistaExcusaVoto(codigo: string, claseId: string, numero: number, motivo: Excusa | null): Promise<void> {
+export async function pistaExcusaVoto(
+  codigo: string,
+  claseId: string,
+  numero: number,
+  motivo: Excusa | null,
+  manual = false,
+): Promise<void> {
   const { error } = await supabase.rpc('acceso_excusa_voto', {
     p_codigo: codigo,
     p_clase: claseId,
     p_numero: numero,
     p_motivo: motivo ?? '',
+    p_manual: manual,
   })
   if (error) throw mensaje(error)
 }
 
-export async function pistaFinalizarVotacion(codigo: string, claseId: string): Promise<void> {
-  const { error } = await supabase.rpc('acceso_finalizar_votacion', { p_codigo: codigo, p_clase: claseId })
+export async function pistaFinalizarVotacion(codigo: string, claseId: string, manual = false): Promise<void> {
+  const { error } = await supabase.rpc('acceso_finalizar_votacion', {
+    p_codigo: codigo,
+    p_clase: claseId,
+    p_manual: manual,
+  })
   if (error) throw mensaje(error)
 }
 
-export async function pistaReabrirVotacion(codigo: string, claseId: string, juezPuesto: number): Promise<void> {
-  const { error } = await supabase.rpc('acceso_reabrir_votacion', { p_codigo: codigo, p_clase: claseId, p_juez: juezPuesto })
+export async function pistaReabrirVotacion(
+  codigo: string,
+  claseId: string,
+  juezPuesto: number,
+  manual = false,
+): Promise<void> {
+  const { error } = await supabase.rpc('acceso_reabrir_votacion', {
+    p_codigo: codigo,
+    p_clase: claseId,
+    p_juez: juezPuesto,
+    p_manual: manual,
+  })
   if (error) throw mensaje(error)
 }
 
 /** Pre-pista o mesa: reparte los números disponibles por edad (el menor al más adulto). */
-export async function pistaAsignarNumeros(codigo: string, claseId: string, numeros: number[]): Promise<void> {
-  const { error } = await supabase.rpc('acceso_asignar_numeros', { p_codigo: codigo, p_clase: claseId, p_numeros: numeros })
+export async function pistaAsignarNumeros(codigo: string, claseId: string, numeros: number[], manual = false): Promise<void> {
+  const { error } = await supabase.rpc('acceso_asignar_numeros', {
+    p_codigo: codigo,
+    p_clase: claseId,
+    p_numeros: numeros,
+    p_manual: manual,
+  })
   if (error) throw mensaje(error)
 }
 
@@ -873,12 +933,19 @@ export async function pistaAsignarNumeros(codigo: string, claseId: string, numer
  * Pre-pista o mesa: pone a un ejemplar el número físico que le tocó. Si otro de la categoría
  * ya lo tenía, se intercambian.
  */
-export async function pistaNumeroEjemplar(codigo: string, claseId: string, ejemplarId: string, numero: number): Promise<void> {
+export async function pistaNumeroEjemplar(
+  codigo: string,
+  claseId: string,
+  ejemplarId: string,
+  numero: number,
+  manual = false,
+): Promise<void> {
   const { error } = await supabase.rpc('acceso_numero_ejemplar', {
     p_codigo: codigo,
     p_clase: claseId,
     p_ejemplar: ejemplarId,
     p_numero: numero,
+    p_manual: manual,
   })
   // Mientras la base no tenga la función nueva, se usa el reparto por edad.
   if (error?.code === 'PGRST202' || error?.code === '42883') {
@@ -888,17 +955,27 @@ export async function pistaNumeroEjemplar(codigo: string, claseId: string, ejemp
 }
 
 /** Mesa: la categoría en pista lleva o no Formato A. Se puede corregir mientras no haya marcas ni votos. */
-export async function pistaLlevaFormatoA(codigo: string, claseId: string, lleva: boolean): Promise<void> {
-  const { error } = await supabase.rpc('acceso_lleva_formato_a', { p_codigo: codigo, p_clase: claseId, p_lleva: lleva })
+export async function pistaLlevaFormatoA(codigo: string, claseId: string, lleva: boolean, manual = false): Promise<void> {
+  const { error } = await supabase.rpc('acceso_lleva_formato_a', {
+    p_codigo: codigo,
+    p_clase: claseId,
+    p_lleva: lleva,
+    p_manual: manual,
+  })
   if (error) throw mensaje(error)
 }
 
-export async function pistaElegirClase(codigo: string, claseId: string): Promise<void> {
-  const { error } = await supabase.rpc('acceso_elegir_clase', { p_codigo: codigo, p_clase: claseId })
+export async function pistaElegirClase(codigo: string, claseId: string, manual = false): Promise<void> {
+  const { error } = await supabase.rpc('acceso_elegir_clase', { p_codigo: codigo, p_clase: claseId, p_manual: manual })
   if (error) throw mensaje(error)
 }
 
-export async function pistaFase(codigo: string, claseId: string, fase: Fase): Promise<void> {
-  const { error } = await supabase.rpc('acceso_fase', { p_codigo: codigo, p_clase: claseId, p_fase: fase })
+export async function pistaFase(codigo: string, claseId: string, fase: Fase, manual = false): Promise<void> {
+  const { error } = await supabase.rpc('acceso_fase', {
+    p_codigo: codigo,
+    p_clase: claseId,
+    p_fase: fase,
+    p_manual: manual,
+  })
   if (error) throw mensaje(error)
 }

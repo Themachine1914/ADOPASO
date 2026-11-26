@@ -254,6 +254,11 @@ export function AdminCompetencia() {
                             ? 'Inscripción abierta'
                             : etiquetaFase(clase.fase)}
                     </span>
+                    {clase.modoCaptura === 'manual' ? (
+                      <span className="typo-caption font-medium text-gold">A mano</span>
+                    ) : clase.modoCaptura === 'en_vivo' ? (
+                      <span className="typo-caption font-medium text-amber-300">En vivo</span>
+                    ) : null}
                     {!finalizada && porCerrar(clase) ? (
                       <button
                         type="button"
@@ -269,12 +274,23 @@ export function AdminCompetencia() {
                         {clase.fase === 'inscripcion' ? 'Cerrar y numerar' : 'Numerar los nuevos'}
                       </button>
                     ) : null}
-                    <Link
-                      to={`/admin/competencias/${competencia.id}/captura/${clase.id}`}
-                      className="typo-btn rounded-[10px] bg-gold px-3 py-1.5 text-sm text-bg"
-                    >
-                      Captura manual
-                    </Link>
+                    {clase.modoCaptura === 'en_vivo' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="typo-btn rounded-[10px] border border-border px-3 py-1.5 text-sm text-muted disabled:opacity-60"
+                        title="Esta categoría ya se está juzgando en vivo. No se puede capturar a mano."
+                      >
+                        Captura manual
+                      </button>
+                    ) : (
+                      <Link
+                        to={`/admin/competencias/${competencia.id}/captura/${clase.id}`}
+                        className="typo-btn rounded-[10px] bg-gold px-3 py-1.5 text-sm text-bg"
+                      >
+                        Captura manual
+                      </Link>
+                    )}
                     <Link to={`/admin/juzgamiento/${clase.id}`} className="typo-meta underline">
                       Libretas y cómputo
                     </Link>
