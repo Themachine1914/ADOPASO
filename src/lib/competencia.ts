@@ -193,7 +193,7 @@ export async function cargarCompetencia(id: string): Promise<DetalleCompetencia 
     supabase
       .from('juzgamientos')
       .select(
-        'id, evento_codigo, categoria, fase, orden, modo_captura, es_gran_campeonato, juzgamiento_ejemplares (id, numero, caballo_codigo, nombre, sexo, nacimiento, propietario, montador, pagado, asistio, origen_categoria, origen_puesto)',
+        'id, evento_codigo, categoria, fase, orden, modo_captura, es_gran_campeonato, juzgamiento_ejemplares!juzgamiento_ejemplares_juzgamiento_id_fkey (id, numero, caballo_codigo, nombre, sexo, nacimiento, propietario, montador, pagado, asistio, origen_categoria, origen_puesto)',
       )
       .eq('competencia_id', id)
       .order('orden', { ascending: true }),
