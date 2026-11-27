@@ -73,6 +73,11 @@ export function formatPoints(points: number): string {
   return new Intl.NumberFormat('es-DO').format(points)
 }
 
+/** Nombre y lugar de una competencia, como el registro histórico: todo en mayúsculas. */
+export function enMayusculas(value: string): string {
+  return value.toLocaleUpperCase('es-DO')
+}
+
 /** Nombres del histórico vienen en MAYÚSCULAS; se muestran en título. */
 export function formatNombre(value: string | null | undefined): string {
   if (!value) return '—'

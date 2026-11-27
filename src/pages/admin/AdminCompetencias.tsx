@@ -4,7 +4,7 @@ import { AyudaGuia } from '../../components/AyudaGuia'
 import { PageHeader } from '../../components/PageHeader'
 import { useAuth } from '../../lib/auth-context'
 import { crearCompetencia, listarCompetencias, type Competencia } from '../../lib/competencia'
-import { formatFechaEmision } from '../../lib/format'
+import { enMayusculas, formatFechaEmision } from '../../lib/format'
 import { listarPrograma, type EventoPrograma } from '../../lib/juzgamiento'
 import { crearSimulacion } from '../../lib/simulacion'
 
@@ -100,7 +100,12 @@ export function AdminCompetencias() {
               const item = programa.find((p) => String(p.codigo) === e.target.value)
               setForm(
                 item
-                  ? { programaCodigo: item.codigo, nombre: item.nombre, fecha: item.fecha, lugar: item.lugar }
+                  ? {
+                      programaCodigo: item.codigo,
+                      nombre: enMayusculas(item.nombre),
+                      fecha: item.fecha,
+                      lugar: enMayusculas(item.lugar),
+                    }
                   : vacio,
               )
             }}
@@ -114,9 +119,9 @@ export function AdminCompetencias() {
             ))}
           </select>
         </label>
-        <Campo label="Nombre" value={form.nombre} onChange={(nombre) => setForm({ ...form, nombre })} />
+        <Campo label="Nombre" value={form.nombre} mayusculas onChange={(nombre) => setForm({ ...form, nombre })} />
         <Campo label="Fecha" type="date" value={form.fecha} onChange={(fecha) => setForm({ ...form, fecha })} />
-        <Campo label="Lugar" value={form.lugar} onChange={(lugar) => setForm({ ...form, lugar })} />
+        <Campo label="Lugar" value={form.lugar} mayusculas onChange={(lugar) => setForm({ ...form, lugar })} />
         <div className="flex items-end">
           <button
             type="submit"
@@ -127,7 +132,8 @@ export function AdminCompetencias() {
           </button>
         </div>
         <p className="typo-meta sm:col-span-2">
-          La edad de cada caballo se cuenta a esta fecha para saber en qué categoría compite.
+          El nombre y el lugar se guardan en mayúsculas. La edad de cada caballo se cuenta a esta fecha para saber en
+          qué categoría compite. Si hay un error de escritura, ábrala y pulse «Editar».
         </p>
         {error ? <p className="typo-meta text-flag-red sm:col-span-2">{error}</p> : null}
       </form>
@@ -144,10 +150,15 @@ export function AdminCompetencias() {
                   className="flex items-center justify-between gap-3 bg-bg/40 px-5 py-4 hover:bg-surface-elevated"
                 >
                   <div>
-                    <p className="typo-name text-base">{fila.nombre}</p>
+                    <p className="typo-name text-base uppercase">{fila.nombre}</p>
                     <p className="typo-meta mt-1">
                       {formatFechaEmision(fila.fecha)}
-                      {fila.lugar ? ` · ${fila.lugar}` : ''}
+                      {fila.lugar ? (
+                        <>
+                          {' · '}
+                          <span className="uppercase">{fila.lugar}</span>
+                        </>
+                      ) : null}
                     </p>
                   </div>
                   <span className="typo-caption shrink-0 text-gold">
@@ -168,11 +179,13 @@ function Campo({
   value,
   onChange,
   type = 'text',
+  mayusculas = false,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   type?: string
+  mayusculas?: boolean
 }) {
   return (
     <label>
@@ -180,8 +193,9 @@ function Campo({
       <input
         type={type}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-2 text-ink"
+        autoCapitalize={mayusculas ? 'characters' : undefined}
+        onChange={(e) => onChange(mayusculas ? enMayusculas(e.target.value) : e.target.value)}
+        className={`mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-2 text-ink${mayusculas ? ' uppercase' : ''}`}
       />
     </label>
   )

@@ -1,4 +1,5 @@
 import { mesesCumplidos, modalidadDeClase, sexoRegistro, type Modalidad } from './campeonato'
+import { enMayusculas } from './format'
 import { normalize } from './normalize'
 import { LUGARES_PUESTO } from './computo'
 import { nombreAncestro } from './genealogia'
@@ -170,9 +171,9 @@ export async function crearCompetencia(input: {
     .from('competencias')
     .insert({
       programa_codigo: input.programaCodigo,
-      nombre: input.nombre.trim(),
+      nombre: enMayusculas(input.nombre.trim()),
       fecha: input.fecha,
-      lugar: input.lugar.trim() || null,
+      lugar: enMayusculas(input.lugar.trim()) || null,
       simulacion: input.simulacion ?? false,
     })
     .select('id')
@@ -235,6 +236,29 @@ function ordenAcceso(acceso: Acceso): number {
   if (acceso.rol === 'mesa') return 0
   if (acceso.rol === 'prepista') return 1
   return 1 + (acceso.juezPuesto ?? 0)
+}
+
+/** Corrige nombre, fecha y lugar. El nombre y el lugar quedan en mayúsculas. */
+export async function actualizarCompetencia(
+  id: string,
+  input: { nombre: string; fecha: string; lugar: string },
+): Promise<void> {
+  const nombre = enMayusculas(input.nombre.trim())
+  const lugar = enMayusculas(input.lugar.trim())
+  if (!nombre || !input.fecha) {
+    throw new Error('Escriba el nombre y la fecha de la competencia.')
+  }
+  const { error } = await supabase
+    .from('competencias')
+    .update({ nombre, fecha: input.fecha, lugar: lugar || null })
+    .eq('id', id)
+  if (error) throw error
+  // Si ya se sincronizó, el ranking agrupa por fecha y lugar: la corrección tiene que llegar ahí.
+  const { error: errorRanking } = await supabase
+    .from('participaciones')
+    .update({ fecha: input.fecha, lugar: lugar || null })
+    .eq('competencia_id', id)
+  if (errorRanking) throw errorRanking
 }
 
 export async function finalizarCompetencia(id: string): Promise<void> {
