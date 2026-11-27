@@ -104,11 +104,14 @@ export function AdminCompetencia() {
   if (!detalle) return <p className="typo-meta">{error ?? 'Esta competencia no existe.'}</p>
 
   const { competencia, clases } = detalle
-  const clasesVisibles = clases.filter((clase) => matchesSearch(clase.categoria, busquedaCategoria))
-  const inscritos = clases.reduce((suma, clase) => suma + clase.inscritos.length, 0)
+  const regulares = clases.filter((clase) => !clase.esGranCampeonato)
+  const grandes = clases.filter((clase) => clase.esGranCampeonato)
+  const clasesVisibles = regulares.filter((clase) => matchesSearch(clase.categoria, busquedaCategoria))
+  const inscritos = regulares.reduce((suma, clase) => suma + clase.inscritos.length, 0)
   const porCerrar = (clase: ClaseCompetencia) =>
-    clase.fase === 'inscripcion' || (clase.fase === 'prepista' && clase.inscritos.some((item) => item.numero == null))
-  const abiertas = clases.filter(porCerrar).length
+    !clase.esGranCampeonato &&
+    (clase.fase === 'inscripcion' || (clase.fase === 'prepista' && clase.inscritos.some((item) => item.numero == null)))
+  const abiertas = regulares.filter(porCerrar).length
   const finalizada = competencia.estado === 'finalizada'
 
   return (
@@ -124,7 +127,7 @@ export function AdminCompetencia() {
         <DatosCompetencia
           competencia={competencia}
           inscritos={inscritos}
-          categorias={clases.length}
+          categorias={regulares.length}
           onGuardar={async (datos) => {
             await actualizarCompetencia(competencia.id, datos)
             await recargar()
@@ -173,7 +176,7 @@ export function AdminCompetencia() {
       <section>
         <h2 className="typo-section">Categorías e inscritos</h2>
 
-        {clases.length === 0 ? (
+        {regulares.length === 0 ? (
           <p className="typo-meta mt-4">Todavía no hay caballos inscritos.</p>
         ) : (
           <div className="mt-4 space-y-4">
@@ -432,6 +435,73 @@ export function AdminCompetencia() {
             </button>
           </div>
         ) : null}
+      </section>
+
+      <section>
+        <h2 className="typo-section">Gran campeonato</h2>
+        <p className="typo-meta mt-2">
+          El 1.º y el 2.º de cada grupo de 49 meses en adelante entran solos al cerrar su categoría. Machos y hembras van
+          aparte. No hay pre-pista ni Formato A.
+        </p>
+        {grandes.length === 0 ? (
+          <p className="typo-meta mt-4">Todavía no hay clasificados. Aparecen cuando se cierra una categoría que alimenta el gran campeonato.</p>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {grandes.map((clase) => {
+              const capturada = clase.fase === 'cerrada'
+              const enPista = competencia.claseActiva === clase.id && !capturada
+              return (
+                <div
+                  key={clase.id}
+                  className={[
+                    'rounded-[12px] border px-4 py-3',
+                    capturada ? 'border-emerald-500/60 bg-emerald-500/10' : enPista ? 'border-amber-400/80 bg-amber-400/10' : 'border-border bg-surface',
+                  ].join(' ')}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="typo-name text-base">{clase.categoria}</p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="typo-caption text-gold">
+                        {capturada ? 'Capturada' : enPista ? `En pista · ${etiquetaFase(clase.fase)}` : `${clase.inscritos.length} clasificados`}
+                      </span>
+                      {clase.modoCaptura === 'en_vivo' ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="typo-btn rounded-[10px] border border-border px-3 py-1.5 text-sm text-muted disabled:opacity-60"
+                          title="Este gran campeonato ya se está votando en vivo."
+                        >
+                          Introducir datos manual
+                        </button>
+                      ) : (
+                        <Link
+                          to={`/admin/competencias/${competencia.id}/captura/${clase.id}`}
+                          className="typo-btn rounded-[10px] bg-gold px-3 py-1.5 text-sm text-bg"
+                        >
+                          Introducir datos manual
+                        </Link>
+                      )}
+                      <Link to={`/admin/juzgamiento/${clase.id}`} className="typo-meta underline">
+                        Libretas y cómputo
+                      </Link>
+                    </div>
+                  </div>
+                  <ul className="mt-3 space-y-1">
+                    {clase.inscritos
+                      .slice()
+                      .sort((a, b) => (a.numero ?? 999) - (b.numero ?? 999))
+                      .map((item) => (
+                        <li key={item.id} className="typo-meta">
+                          <span className="font-semibold text-gold">{item.numero ?? '—'}</span> {formatNombre(item.nombre)}
+                          {item.origen ? ` · ${item.origenPuesto}.º de ${item.origen}` : ''}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <ResultadosCompetencia competencia={competencia} onCambio={recargar} />

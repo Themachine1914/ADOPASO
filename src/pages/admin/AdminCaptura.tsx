@@ -16,6 +16,7 @@ import {
   juezFinalizo,
   mayoriaJueces,
   numerarCategoria,
+  pistaAbrirGran,
   pistaElegirClase,
   pistaEscoger,
   pistaExcusaVoto,
@@ -32,7 +33,17 @@ import {
   type Excusa,
   type Fase,
 } from '../../lib/competencia'
-import { hojaDeComputo, juezMasCertero, LUGARES_PUESTO, SIN_VOTO } from '../../lib/computo'
+import {
+  ETIQUETA_GRAN,
+  hojaDeComputo,
+  hojaGranCampeonato,
+  juezMasCertero,
+  LUGARES_GRAN,
+  LUGARES_PUESTO,
+  PREMIO_GRAN,
+  SIN_VOTO,
+  SIN_VOTO_GRAN,
+} from '../../lib/computo'
 import { formatFechaEmision, formatNombre } from '../../lib/format'
 
 type Hacer = (accion: () => Promise<void>) => Promise<boolean>
@@ -129,8 +140,9 @@ export function AdminCaptura() {
         <p className="typo-eyebrow mt-4">Introducir datos manual</p>
         <h1 className="typo-page mt-2">{clase.categoria}</h1>
         <p className="typo-lead mt-2">
-          La pre-pista pone los números y confirma en su pantalla. Desde sacar a pista, una sola persona anota el
-          formato A si aplica, quién pasa, las excusas, la votación y el cierre.
+          {clase.esGranCampeonato
+            ? 'Una sola persona anota el recorrido, las excusas, la votación de los seis títulos y el cierre. No hay pre-pista ni Formato A.'
+            : 'La pre-pista pone los números y confirma en su pantalla. Desde sacar a pista, una sola persona anota el formato A si aplica, quién pasa, las excusas, la votación y el cierre.'}
         </p>
         {error ? <p className="typo-meta mt-3 text-flag-red">{error}</p> : null}
       </div>
@@ -140,7 +152,7 @@ export function AdminCaptura() {
           Esta categoría ya se está juzgando en vivo. No se puede capturar a mano.
         </p>
       ) : clase.fase === 'inscripcion' ? (
-        <PasoAbrir {...base} />
+        clase.esGranCampeonato ? <PasoEmpezarGran {...base} otra={otra?.categoria ?? null} /> : <PasoAbrir {...base} />
       ) : !enPista && clase.fase === 'cerrada' ? (
         <PasoCierre {...base} />
       ) : !enPista && clase.fase === 'prepista' ? (
@@ -162,6 +174,39 @@ function Aviso({ id, children }: { id: string; children: string }) {
         Volver a la competencia
       </Link>
     </div>
+  )
+}
+
+function PasoEmpezarGran({ clase, mesa, hacer, otra }: PasoBase & { otra: string | null }) {
+  const lista = numerados(clase)
+  return (
+    <section className="space-y-4">
+      <Encabezado
+        titulo="Empezar el gran campeonato"
+        texto="Los clasificados ya tienen número. Al empezar, pasan al recorrido individual y esta clase queda en captura manual."
+      />
+      {otra ? <p className="typo-meta text-flag-red">{otra} sigue en pista. Finalícela antes de empezar este gran campeonato.</p> : null}
+      <ul className="space-y-1">
+        {lista.map((item) => (
+          <li key={item.id} className="typo-meta">
+            <span className="font-semibold text-gold">{item.numero}</span> {formatNombre(item.nombre)}
+            {item.origen ? ` · ${item.origenPuesto}.º de ${item.origen}` : ''}
+          </li>
+        ))}
+      </ul>
+      {lista.length === 0 ? <p className="typo-meta">Todavía no hay clasificados.</p> : null}
+      <button
+        type="button"
+        disabled={otra != null || lista.length === 0}
+        className="typo-btn rounded-[10px] bg-gold px-4 py-2.5 text-bg disabled:opacity-50"
+        onClick={() => {
+          if (!window.confirm(`¿Empezar ${clase.categoria}? Los jueces ya no podrán votarlo en vivo.`)) return
+          void hacer(() => pistaAbrirGran(mesa, clase.id, true))
+        }}
+      >
+        Empezar
+      </button>
+    </section>
   )
 }
 
@@ -307,7 +352,7 @@ function Flujo({
       <nav aria-label="Pasos de la categoría">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="typo-label">Pasos</p>
-          <FormatoToggle {...base} />
+          {clase.esGranCampeonato ? <p className="typo-caption">Recorrido individual y votación</p> : <FormatoToggle {...base} />}
         </div>
         <ol className="mt-3 flex flex-wrap gap-2">
           {fases.map((fase, orden) => {
@@ -517,13 +562,22 @@ function PasoVotacion(base: PasoBase) {
   const { clase, estado, estilo, codigos, hacer } = base
   const puestos = estado.jueces.map((juez) => juez.puesto)
   const escogidos = numerados(clase).filter((item) => item.escogido && item.asistio !== false && !item.excusa)
-  const lugares = LUGARES_PUESTO.slice(0, Math.min(LUGARES_PUESTO.length, escogidos.length))
+  const lugares = (clase.esGranCampeonato ? LUGARES_GRAN : LUGARES_PUESTO).slice(
+    0,
+    Math.min(clase.esGranCampeonato ? LUGARES_GRAN.length : LUGARES_PUESTO.length, escogidos.length),
+  )
+  const etiquetaLugar = (lugar: string) =>
+    clase.esGranCampeonato ? ETIQUETA_GRAN[lugar as (typeof LUGARES_GRAN)[number]] : `${lugar}.º`
   return (
     <section className="space-y-8">
       <div>
         <Encabezado
           titulo="Votación final"
-          texto="Anote el número que cada juez puso en cada lugar. Un número no se repite en la misma libreta: si lo pone en otro lugar, sale del anterior."
+          texto={
+            clase.esGranCampeonato
+              ? 'Anote el número que cada juez puso en cada título. Un número no se repite en la misma libreta.'
+              : 'Anote el número que cada juez puso en cada lugar. Un número no se repite en la misma libreta: si lo pone en otro lugar, sale del anterior.'
+          }
         />
         {escogidos.length === 0 ? <p className="typo-meta mt-3">No hay ejemplares en el recorrido.</p> : null}
         <div className="mt-3 overflow-x-auto rounded-[12px] border border-border">
@@ -541,7 +595,7 @@ function PasoVotacion(base: PasoBase) {
             <tbody className="divide-y divide-border">
               {lugares.map((lugar) => (
                 <tr key={lugar}>
-                  <th className="px-3 py-2 text-left">{lugar}.º</th>
+                  <th className="px-3 py-2 text-left">{etiquetaLugar(lugar)}</th>
                   {puestos.map((puesto) => {
                     const actual = clase.votos.find((voto) => voto.juezPuesto === puesto && voto.lugar === lugar)?.numero ?? ''
                     const codigo = codigos.get(puesto)
@@ -549,7 +603,7 @@ function PasoVotacion(base: PasoBase) {
                     return (
                       <td key={puesto} className="px-3 py-2">
                         <select
-                          aria-label={`${lugar}.º de ${nombreJuez(estado, puesto, estilo)}`}
+                          aria-label={`${etiquetaLugar(lugar)} de ${nombreJuez(estado, puesto, estilo)}`}
                           value={actual}
                           disabled={finalizado || !codigo}
                           onChange={(e) => {
@@ -608,8 +662,8 @@ function PasoCierre(base: PasoBase) {
         Imprimir acta (PDF)
       </button>
       <p className="typo-meta">En la ventana de impresión puede elegir «Guardar como PDF».</p>
-      <Narrador clase={clase} estado={estado} estilo={estilo} computo={computo} />
-      <TablaComputo estilo={estilo} computo={computo} puestos={puestos} />
+      {clase.esGranCampeonato ? null : <Narrador clase={clase} estado={estado} estilo={estilo} computo={computo} />}
+      <TablaComputo estilo={estilo} computo={computo} puestos={puestos} gran={clase.esGranCampeonato} />
       {computo.length === 0 ? <p className="typo-meta">Todavía no hay ejemplares en el recorrido individual.</p> : null}
       <ul className="typo-meta space-y-1">
         {lista.map((item) => (
@@ -873,11 +927,13 @@ function TablaComputo({
   puestos,
   estilo,
   impresa,
+  gran = false,
 }: {
   computo: ReturnType<typeof hojaDeComputo>
   puestos: number[]
   estilo: EstiloJueces
   impresa?: boolean
+  gran?: boolean
 }) {
   const celda = impresa ? CELDA : 'px-3 py-2'
   return (
@@ -904,11 +960,13 @@ function TablaComputo({
               </th>
               {fila.porJuez.map((nota, indice) => (
                 <td key={indice} className={celda}>
-                  {nota ?? (fila.total != null ? SIN_VOTO : '')}
+                  {nota ?? (fila.total != null ? (gran ? SIN_VOTO_GRAN : SIN_VOTO) : '')}
                 </td>
               ))}
               <td className={`${celda} font-semibold`}>{fila.total ?? ''}</td>
-              <td className={`${celda} font-semibold ${impresa ? '' : 'text-gold'}`}>{fila.puesto ?? ''}</td>
+              <td className={`${celda} font-semibold ${impresa ? '' : 'text-gold'}`}>
+                {gran && fila.puesto ? PREMIO_GRAN[fila.puesto] : (fila.puesto ?? '')}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -992,9 +1050,11 @@ function Acta({
             </tr>
           </thead>
           <tbody>
-            {LUGARES_PUESTO.map((lugar) => (
+            {(clase.esGranCampeonato ? LUGARES_GRAN : LUGARES_PUESTO).map((lugar) => (
               <tr key={lugar}>
-                <th className={CELDA}>{lugar}.º</th>
+                <th className={CELDA}>
+                  {clase.esGranCampeonato ? ETIQUETA_GRAN[lugar as (typeof LUGARES_GRAN)[number]] : `${lugar}.º`}
+                </th>
                 {puestos.map((puesto) => (
                   <td key={puesto} className={CELDA}>
                     {clase.votos.find((voto) => voto.juezPuesto === puesto && voto.lugar === lugar)?.numero ?? ''}
@@ -1005,8 +1065,8 @@ function Acta({
           </tbody>
         </table>
         <h2 className="mt-6 text-base font-bold">Hoja de cómputo</h2>
-        <TablaComputo estilo={estilo} computo={computo} puestos={puestos} impresa />
-        <Narrador clase={clase} estado={estado} estilo={estilo} computo={computo} impresa />
+        <TablaComputo estilo={estilo} computo={computo} puestos={puestos} impresa gran={clase.esGranCampeonato} />
+        {clase.esGranCampeonato ? null : <Narrador clase={clase} estado={estado} estilo={estilo} computo={computo} impresa />}
         <h2 className="mt-8 text-base font-bold">Firmas</h2>
         <div className="mt-6 grid grid-cols-2 gap-x-10 gap-y-12 text-sm">
           {puestos.map((puesto) => (
@@ -1023,7 +1083,11 @@ function Acta({
 }
 
 function fasesDe(clase: ClasePista) {
-  return FASES.filter((fase) => fase.value !== 'inscripcion' && (clase.conFormatoA || fase.value !== 'formato_a'))
+  return FASES.filter((fase) => {
+    if (fase.value === 'inscripcion') return false
+    if (clase.esGranCampeonato) return fase.value === 'individual' || fase.value === 'votacion' || fase.value === 'cerrada'
+    return clase.conFormatoA || fase.value !== 'formato_a'
+  })
 }
 
 function etiquetaSiguiente(fase: Fase): string {
@@ -1039,7 +1103,8 @@ function numerados(clase: ClasePista): EjemplarPista[] {
 }
 
 function computoDe(clase: ClasePista, puestos: number[]) {
-  return hojaDeComputo(
+  const hoja = clase.esGranCampeonato ? hojaGranCampeonato : hojaDeComputo
+  return hoja(
     numerados(clase).map((item) => ({
       numero: item.numero!,
       nombre: item.nombre ?? '',

@@ -383,6 +383,19 @@ export const GUIA: CategoriaGuia[] = [
         nota: 'Hacen falta el código de la mesa técnica y el de cada juez: con esos se guarda lo que anota cada puesto. Sin el código de un juez no se puede anotar su formato A ni su votación. Sacar a pista abre «Introducir datos manual»: jueces y mesa ya no pueden modificarla. La pre-pista sigue con los números y la asistencia. Si jueces o mesa ya empezaron en vivo, «Introducir datos manual» no se abre. «Cerrar y numerar» no elige el camino.',
       },
       {
+        pregunta: '¿Cómo se juzga el gran campeonato?',
+        respuesta:
+          'El 1.º y el 2.º de cada grupo de 49 meses en adelante entran solos al cerrar su categoría. También entran performance, placer y bellas formas, con los grupos que ya tienen. Machos y hembras van en gran campeonatos distintos. No hay pre-pista ni Formato A: se va al recorrido individual y a la votación.',
+        pasos: [
+          'En la competencia, la sección «Gran campeonato» muestra quién ya clasificó y de qué categoría vino. Se actualiza al cerrar cada categoría.',
+          'En vivo: la mesa técnica, en su pantalla, pulsa «Votar» cuando esa clase va a la pista. Los jueces eligen gran campeón, gran campeón reservado y primer a cuarto finalista. Quedan dos caballos sin premio.',
+          'A mano: en esa misma sección pulse «Introducir datos manual» y luego «Empezar». Una sola persona anota la libreta de cada juez y el cierre.',
+          'Gana la suma más baja. Gran campeón vale 1, reservado 2, primer finalista 3, segundo 4, tercero 5 y cuarto 6. Quien no fue votado cuenta como 7.',
+          'Al sincronizar, esos premios valen 40, 30, 20, 15, 10 y 5 puntos, iguales para el caballo, el criador y el exhibidor. El gran campeón queda marcado como campeón.',
+        ],
+        nota: 'Si la mesa ya abrió el gran campeonato en vivo, no se puede capturar a mano, y al revés. Reabrir una categoría que ya alimentó el gran campeonato lo saca de la lista solo mientras ese gran campeonato no haya empezado. El tercer puesto de una categoría no clasifica. Los grupos de 48 meses o menos no entran.',
+      },
+      {
         pregunta: '¿Cada cuánto se actualizan las pantallas?',
         respuesta:
           'Cada 4 segundos, solas. Lo que marca la pre-pista o vota un juez aparece en la mesa técnica en ese tiempo, sin recargar la página.',
