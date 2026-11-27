@@ -156,6 +156,103 @@ function mapCompetencia(row: Record<string, unknown>): Competencia {
   }
 }
 
+export interface GranConsultaCaballo {
+  id: string
+  numero: number | null
+  nombre: string
+  origen: string | null
+  origenPuesto: number | null
+}
+
+export interface GranConsultaClase {
+  id: string
+  categoria: string
+  fase: Fase
+  modoCaptura: ModoCaptura | null
+  enPista: boolean
+  caballos: GranConsultaCaballo[]
+}
+
+/** Una competencia y los gran campeonatos que ya tiene, para consultarlos aparte. */
+export interface GranConsulta {
+  id: string
+  nombre: string
+  fecha: string
+  lugar: string | null
+  estado: Competencia['estado']
+  simulacion: boolean
+  clases: GranConsultaClase[]
+}
+
+export async function listarConsultaGran(): Promise<GranConsulta[]> {
+  const [abiertas, clases] = await Promise.all([
+    supabase
+      .from('competencias')
+      .select('id, nombre, fecha, lugar, estado, simulacion, clase_activa')
+      .neq('estado', 'finalizada')
+      .order('fecha', { ascending: false }),
+    supabase
+      .from('juzgamientos')
+      .select(
+        'id, categoria, fase, modo_captura, competencia_id, competencias!juzgamientos_competencia_id_fkey (id, nombre, fecha, lugar, estado, simulacion, clase_activa), juzgamiento_ejemplares!juzgamiento_ejemplares_juzgamiento_id_fkey (id, numero, nombre, origen_categoria, origen_puesto)',
+      )
+      .eq('es_gran_campeonato', true)
+      .order('categoria'),
+  ])
+  if (abiertas.error) throw abiertas.error
+  if (clases.error) throw clases.error
+
+  const porId = new Map<string, GranConsulta>()
+  const tomar = (row: Record<string, unknown>) => {
+    const id = String(row.id)
+    const actual = porId.get(id)
+    if (actual) return actual
+    const creada: GranConsulta = {
+      id,
+      nombre: String(row.nombre ?? ''),
+      fecha: fecha(row.fecha) ?? '',
+      lugar: texto(row.lugar),
+      estado: String(row.estado) as Competencia['estado'],
+      simulacion: Boolean(row.simulacion),
+      clases: [],
+    }
+    porId.set(id, creada)
+    return creada
+  }
+
+  for (const row of abiertas.data ?? []) tomar(row as Record<string, unknown>)
+
+  for (const row of clases.data ?? []) {
+    const anidada = row.competencias as unknown
+    const competencia = (Array.isArray(anidada) ? anidada[0] : anidada) as Record<string, unknown> | null
+    if (!competencia) continue
+    const consulta = tomar(competencia)
+    const caballos = ((row.juzgamiento_ejemplares ?? []) as Record<string, unknown>[])
+      .map((item) => ({
+        id: String(item.id),
+        numero: item.numero == null ? null : Number(item.numero),
+        nombre: String(item.nombre ?? ''),
+        origen: texto(item.origen_categoria),
+        origenPuesto: item.origen_puesto == null ? null : Number(item.origen_puesto),
+      }))
+      .sort((a, b) => (a.numero ?? 9999) - (b.numero ?? 9999) || a.nombre.localeCompare(b.nombre))
+    consulta.clases.push({
+      id: String(row.id),
+      categoria: String(row.categoria ?? ''),
+      fase: String(row.fase) as Fase,
+      modoCaptura: modoCapturaDe(row.modo_captura),
+      enPista: competencia.clase_activa === row.id && String(row.fase) !== 'cerrada',
+      caballos,
+    })
+  }
+
+  return [...porId.values()].sort((a, b) => {
+    const orden = (item: GranConsulta) => (item.estado === 'finalizada' ? 1 : 0)
+    if (orden(a) !== orden(b)) return orden(a) - orden(b)
+    return b.fecha.localeCompare(a.fecha)
+  })
+}
+
 export async function listarCompetencias(): Promise<Competencia[]> {
   const { data, error } = await supabase
     .from('competencias')

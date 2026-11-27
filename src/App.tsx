@@ -6,6 +6,7 @@ import { AdminCaptura } from './pages/admin/AdminCaptura'
 import { AdminCompetencia } from './pages/admin/AdminCompetencia'
 import { AdminCompetencias } from './pages/admin/AdminCompetencias'
 import { AdminSimulacion } from './pages/admin/AdminSimulacion'
+import { AdminGranCampeonato } from './pages/admin/AdminGranCampeonato'
 import { AdminGuia } from './pages/admin/AdminGuia'
 import { AdminInicio } from './pages/admin/AdminInicio'
 import { AdminLayout } from './pages/admin/AdminLayout'
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="usuarios" element={<AdminUsuarios />} />
             <Route path="guia" element={<AdminGuia />} />
             <Route path="competencias" element={<AdminCompetencias />} />
+            <Route path="gran-campeonato" element={<AdminGranCampeonato />} />
             <Route path="competencias/:id" element={<AdminCompetencia />} />
             <Route path="competencias/:id/captura/:claseId" element={<AdminCaptura />} />
             <Route path="competencias/:id/simulacion" element={<AdminSimulacion />} />
