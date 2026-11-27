@@ -1,3 +1,4 @@
+import { nombreAncestro } from './genealogia'
 import { supabase } from './supabase'
 import type { LugarF2 } from './computo'
 
@@ -20,6 +21,8 @@ export interface EjemplarClase {
   nacimiento: string | null
   padre: string | null
   madre: string | null
+  /** Sale del registro: ancestros.compabuelo. No se escribe en la inscripción. */
+  abueloMaterno: string | null
   criador: string | null
   propietario: string | null
   montador: string | null
@@ -87,6 +90,7 @@ function mapEjemplar(row: Record<string, unknown>): EjemplarClase {
     nacimiento: fecha(row.nacimiento),
     padre: row.padre ? String(row.padre) : null,
     madre: row.madre ? String(row.madre) : null,
+    abueloMaterno: null,
     criador: row.criador ? String(row.criador) : null,
     propietario: row.propietario ? String(row.propietario) : null,
     montador: row.montador ? String(row.montador) : null,
@@ -168,11 +172,39 @@ export async function cargarSala(id: string): Promise<SalaJuzgamiento | null> {
   if (ejemplares.error) throw ejemplares.error
   if (jueces.error) throw jueces.error
   if (votos.error) throw votos.error
+  const filas = (ejemplares.data ?? []) as Record<string, unknown>[]
+  const codigos = [
+    ...new Set(
+      filas
+        .map((fila) => {
+          const codigo = typeof fila.caballo_codigo === 'string' ? fila.caballo_codigo.trim() : ''
+          if (codigo) return codigo
+          const registro = typeof fila.registro === 'string' ? fila.registro.trim() : ''
+          return registro
+        })
+        .filter((codigo) => codigo.length > 0),
+    ),
+  ]
+  const abuelos = new Map<string, string | null>()
+  if (codigos.length > 0) {
+    const caballos = await supabase.from('caballos').select('codigo, ancestros').in('codigo', codigos)
+    if (caballos.error) throw caballos.error
+    for (const caballo of caballos.data ?? []) {
+      abuelos.set(String(caballo.codigo), nombreAncestro(caballo.ancestros, 'compabuelo'))
+    }
+  }
   const competencia = (juzgamiento.data as { competencias?: { etiqueta_jueces?: string } | null }).competencias
   return {
     estiloJueces: competencia?.etiqueta_jueces === 'letra' ? 'letra' : 'numero',
     juzgamiento: mapJuzgamiento(juzgamiento.data),
-    ejemplares: (ejemplares.data ?? []).map(mapEjemplar),
+    ejemplares: filas.map((fila) => {
+      const ejemplar = mapEjemplar(fila)
+      const codigo = typeof fila.caballo_codigo === 'string' ? fila.caballo_codigo.trim() : ''
+      const registro = typeof fila.registro === 'string' ? fila.registro.trim() : ''
+      const conocido = codigo && abuelos.has(codigo) ? abuelos.get(codigo) : abuelos.get(registro)
+      ejemplar.abueloMaterno = conocido ?? null
+      return ejemplar
+    }),
     jueces: (jueces.data ?? []).map((row) => ({
       id: String(row.id),
       puesto: Number(row.puesto),
@@ -190,7 +222,7 @@ export async function cargarSala(id: string): Promise<SalaJuzgamiento | null> {
 
 export async function agregarEjemplar(
   juzgamientoId: string,
-  ejemplar: Omit<EjemplarClase, 'id' | 'escogido'>,
+  ejemplar: Omit<EjemplarClase, 'id' | 'escogido' | 'abueloMaterno'>,
 ): Promise<void> {
   const { error } = await supabase.from('juzgamiento_ejemplares').insert({
     juzgamiento_id: juzgamientoId,

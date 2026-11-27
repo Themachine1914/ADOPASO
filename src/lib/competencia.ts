@@ -1,6 +1,7 @@
 import { mesesCumplidos, modalidadDeClase, sexoRegistro, type Modalidad } from './campeonato'
 import { normalize } from './normalize'
 import { LUGARES_PUESTO } from './computo'
+import { nombreAncestro } from './genealogia'
 import { valorModalidadRegistro } from './registro'
 import { supabase } from './supabase'
 
@@ -426,6 +427,7 @@ export interface FilaFormularioDireccion {
   nacimiento: string | null
   padre: string | null
   madre: string | null
+  abueloMaterno: string | null
   criador: string | null
   propietario: string | null
   montador: string | null
@@ -458,7 +460,7 @@ export async function cargarFormularioDireccion(claseId: string): Promise<FilaFo
   if (codigos.length > 0) {
     const consulta = await supabase
       .from('caballos')
-      .select('codigo, asociacion_abrev, padre, madre, criador')
+      .select('codigo, asociacion_abrev, padre, madre, criador, ancestros')
       .in('codigo', codigos)
     if (consulta.error) throw consulta.error
     for (const caballo of (consulta.data ?? []) as Record<string, unknown>[]) {
@@ -481,6 +483,7 @@ export async function cargarFormularioDireccion(claseId: string): Promise<FilaFo
         nacimiento: fecha(fila.nacimiento),
         padre: primero(texto(fila.padre), caballo ? texto(caballo.padre) : null),
         madre: primero(texto(fila.madre), caballo ? texto(caballo.madre) : null),
+        abueloMaterno: caballo ? nombreAncestro(caballo.ancestros, 'compabuelo') : null,
         criador: primero(texto(fila.criador), caballo ? texto(caballo.criador) : null),
         propietario: texto(fila.propietario),
         montador: texto(fila.montador),

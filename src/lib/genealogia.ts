@@ -35,6 +35,27 @@ export interface LineaAncestro {
   texto: string
 }
 
+/** Nombre de un antepasado guardado en `caballos.ancestros`, por ejemplo el abuelo materno (`compabuelo`). */
+export function nombreAncestro(ancestros: unknown, clave: string): string | null {
+  let datos = ancestros
+  if (typeof datos === 'string') {
+    try {
+      datos = JSON.parse(datos) as unknown
+    } catch {
+      return null
+    }
+  }
+  if (!datos || typeof datos !== 'object' || Array.isArray(datos)) return null
+  const nodo = (datos as Record<string, unknown>)[clave]
+  if (typeof nodo === 'string') {
+    const texto = nodo.trim()
+    return texto || null
+  }
+  if (!nodo || typeof nodo !== 'object' || Array.isArray(nodo)) return null
+  const nombre = (nodo as Record<string, unknown>).nombre
+  return typeof nombre === 'string' && nombre.trim() ? nombre.trim() : null
+}
+
 function textoAncestro(valor: unknown): string | null {
   if (typeof valor === 'string') {
     const texto = valor.trim()

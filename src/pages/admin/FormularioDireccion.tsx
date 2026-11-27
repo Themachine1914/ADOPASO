@@ -3,10 +3,10 @@ import { createPortal } from 'react-dom'
 import { cargarFormularioDireccion, type FilaFormularioDireccion } from '../../lib/competencia'
 import { formatFechaEmision, formatFechaRegistro, formatNombre } from '../../lib/format'
 
-const COLUMNAS = ['No.', 'Registro', 'Asoc.', 'Nombre', 'Sexo', 'Nacimiento', 'Padre', 'Madre', 'Criador', 'Propietario', 'Montador']
+const COLUMNAS = ['No.', 'Registro', 'Asoc.', 'Nombre', 'Sexo', 'Nacimiento', 'Padre', 'Madre', 'Abuelo materno', 'Criador', 'Propietario', 'Montador']
 
 /** Anchos como en la tabla de Libretas y cómputo, para que los nombres partan igual. */
-const ANCHOS = ['5%', '9%', '8%', '13%', '5%', '9%', '10%', '10%', '10%', '11%', '10%']
+const ANCHOS = ['4%', '8%', '7%', '12%', '4%', '8%', '9%', '9%', '10%', '10%', '10%', '9%']
 
 /**
  * La misma tabla de «Libretas y cómputo», en hoja blanca. El estilo de impresión
@@ -132,6 +132,7 @@ function FormularioDireccionImpreso({
                 <td className="px-2 py-2 align-top">{fila.nacimiento ? formatFechaRegistro(fila.nacimiento) : ''}</td>
                 <td className="px-2 py-2 align-top">{texto(fila.padre)}</td>
                 <td className="px-2 py-2 align-top">{texto(fila.madre)}</td>
+                <td className="px-2 py-2 align-top">{texto(fila.abueloMaterno)}</td>
                 <td className="px-2 py-2 align-top">{texto(fila.criador)}</td>
                 <td className="px-2 py-2 align-top">{texto(fila.propietario)}</td>
                 <td className="px-2 py-2 align-top">{texto(fila.montador)}</td>

@@ -294,7 +294,7 @@ function Formulario({
         <table className="w-full min-w-[64rem] border-collapse text-left text-xs">
           <thead>
             <tr className="border-b border-[#1c1408]">
-              {['No.', 'Registro', 'Asoc.', 'Nombre', 'Sexo', 'Nacimiento', 'Padre', 'Madre', 'Criador', 'Propietario', 'Montador', ''].map((col) => (
+              {['No.', 'Registro', 'Asoc.', 'Nombre', 'Sexo', 'Nacimiento', 'Padre', 'Madre', 'Abuelo materno', 'Criador', 'Propietario', 'Montador', ''].map((col) => (
                 <th key={col} className="px-2 py-2 font-semibold uppercase">
                   {col}
                 </th>
@@ -312,6 +312,7 @@ function Formulario({
                 <td className="px-2 py-2">{item.nacimiento ? formatFechaRegistro(item.nacimiento) : ''}</td>
                 <td className="px-2 py-2">{item.padre ? formatNombre(item.padre) : ''}</td>
                 <td className="px-2 py-2">{item.madre ? formatNombre(item.madre) : ''}</td>
+                <td className="px-2 py-2">{item.abueloMaterno ? formatNombre(item.abueloMaterno) : ''}</td>
                 <td className="px-2 py-2">{item.criador ? formatNombre(item.criador) : ''}</td>
                 <td className="px-2 py-2">{item.propietario ? formatNombre(item.propietario) : ''}</td>
                 <td className="px-2 py-2">{item.montador ? formatNombre(item.montador) : ''}</td>
