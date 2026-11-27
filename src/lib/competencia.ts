@@ -1,7 +1,7 @@
 import { mesesCumplidos, modalidadDeClase, sexoRegistro, type Modalidad } from './campeonato'
 import { enMayusculas } from './format'
 import { normalize } from './normalize'
-import { lugaresCapturados, LUGARES_PUESTO } from './computo'
+import { ETIQUETA_GRAN, lugaresCapturados, LUGARES_GRAN, LUGARES_PUESTO } from './computo'
 import { nombreAncestro } from './genealogia'
 import { valorModalidadRegistro } from './registro'
 import { supabase } from './supabase'
@@ -79,6 +79,9 @@ export interface Inscripcion {
   montador: string | null
   pagado: boolean
   asistio: boolean | null
+  /** Categoría de la que clasificó, solo en el gran campeonato. */
+  origen?: string | null
+  origenPuesto?: number | null
 }
 
 /** manual: una persona captura la categoría. en_vivo: pre-pista, jueces y mesa. */
@@ -91,6 +94,8 @@ export interface ClaseCompetencia {
   fase: Fase
   /** Nulo hasta la primera anotación de verdad. Numerar no lo fija. */
   modoCaptura: ModoCaptura | null
+  /** Lo arman el 1.º y el 2.º de los grupos adultos. No se inscribe como las demás. */
+  esGranCampeonato: boolean
   inscritos: Inscripcion[]
 }
 
@@ -188,7 +193,7 @@ export async function cargarCompetencia(id: string): Promise<DetalleCompetencia 
     supabase
       .from('juzgamientos')
       .select(
-        'id, evento_codigo, categoria, fase, orden, modo_captura, juzgamiento_ejemplares (id, numero, caballo_codigo, nombre, sexo, nacimiento, propietario, montador, pagado, asistio)',
+        'id, evento_codigo, categoria, fase, orden, modo_captura, es_gran_campeonato, juzgamiento_ejemplares!juzgamiento_ejemplares_juzgamiento_id_fkey (id, numero, caballo_codigo, nombre, sexo, nacimiento, propietario, montador, pagado, asistio, origen_categoria, origen_puesto)',
       )
       .eq('competencia_id', id)
       .order('orden', { ascending: true }),
@@ -206,6 +211,7 @@ export async function cargarCompetencia(id: string): Promise<DetalleCompetencia 
       categoria: String(row.categoria ?? ''),
       fase: String(row.fase) as Fase,
       modoCaptura: modoCapturaDe(row.modo_captura),
+      esGranCampeonato: Boolean(row.es_gran_campeonato),
       inscritos: ((row.juzgamiento_ejemplares ?? []) as Record<string, unknown>[])
         .map((e) => ({
           id: String(e.id),
@@ -218,6 +224,8 @@ export async function cargarCompetencia(id: string): Promise<DetalleCompetencia 
           montador: texto(e.montador),
           pagado: Boolean(e.pagado),
           asistio: e.asistio == null ? null : Boolean(e.asistio),
+          origen: texto(e.origen_categoria),
+          origenPuesto: e.origen_puesto == null ? null : Number(e.origen_puesto),
         }))
         .sort((a, b) => (a.numero ?? 9999) - (b.numero ?? 9999) || a.nombre.localeCompare(b.nombre)),
     })),
@@ -805,6 +813,9 @@ export interface EjemplarPista {
   criador?: string | null
   adn?: string | null
   microchip?: string | null
+  /** Categoría de la que clasificó. Los jueces no la reciben. */
+  origen?: string | null
+  origenPuesto?: number | null
 }
 
 export interface ClasePista {
@@ -816,6 +827,7 @@ export interface ClasePista {
   conFormatoA: boolean
   /** Nulo hasta la primera anotación. Después no cambia. */
   modoCaptura: ModoCaptura | null
+  esGranCampeonato: boolean
   ejemplares: EjemplarPista[]
   formatoA: Array<{ juezPuesto: number; numero: number }>
   votos: Array<{ juezPuesto: number; lugar: string; numero: number }>
@@ -842,6 +854,45 @@ function nombreEjemplar(item: EjemplarPista): string {
   return nombre ? `${item.numero} (${nombre})` : String(item.numero)
 }
 
+/** El gran campeonato no pide pre-pista ni Formato A. La votación son seis títulos. */
+function faltantesGran(clase: ClasePista, jueces: number[], destino: Fase, estilo: EstiloJueces): string[] {
+  const j = (puesto: number) => etiquetaJuez(puesto, estilo)
+  const actual = ORDEN_FASE.indexOf(clase.fase)
+  const hasta = ORDEN_FASE.indexOf(destino)
+  const faltan: string[] = []
+  const enFinal = clase.ejemplares.filter((item) => item.numero != null && item.escogido && item.asistio !== false && !item.excusa)
+  if (jueces.length === 0) faltan.push('La competencia no tiene jueces con código.')
+  if (enFinal.length === 0) faltan.push('No hay clasificados en este gran campeonato.')
+  if (hasta >= ORDEN_FASE.indexOf('votacion') && actual < ORDEN_FASE.indexOf('individual')) {
+    faltan.push('Primero hay que abrir el recorrido individual.')
+  }
+  if (hasta >= ORDEN_FASE.indexOf('cerrada')) {
+    if (actual < ORDEN_FASE.indexOf('votacion')) faltan.push('Primero hay que abrir la votación final.')
+    const lugares = LUGARES_GRAN.slice(0, Math.min(LUGARES_GRAN.length, enFinal.length))
+    const validos = new Set(enFinal.map((item) => item.numero))
+    for (const puesto of jueces) {
+      const propios = clase.votos.filter((voto) => voto.juezPuesto === puesto && lugares.includes(voto.lugar as (typeof LUGARES_GRAN)[number]))
+      const numeros = propios.map((voto) => voto.numero)
+      if (new Set(numeros).size !== numeros.length) {
+        faltan.push(`El juez ${j(puesto)} repitió un número en la votación.`)
+      }
+      for (const voto of propios) {
+        if (!validos.has(voto.numero)) {
+          faltan.push(`El juez ${j(puesto)} votó al ejemplar ${voto.numero}, que no está en el recorrido.`)
+        }
+      }
+      const votados = new Set(propios.map((voto) => voto.lugar))
+      const sinVotar = lugares.filter((lugar) => !votados.has(lugar))
+      if (sinVotar.length > 0) {
+        faltan.push(`Al juez ${j(puesto)} le falta votar ${sinVotar.map((lugar) => ETIQUETA_GRAN[lugar]).join(', ')}.`)
+      } else if (!juezFinalizo(clase, puesto, 'votacion')) {
+        faltan.push(`El juez ${j(puesto)} no ha finalizado su votación.`)
+      }
+    }
+  }
+  return faltan
+}
+
 /**
  * Lo que impide abrir una fase posterior. Volver a una fase anterior no exige nada.
  * La edad no entra: se mira la asistencia, el formato A, quién pasa y la votación.
@@ -856,6 +907,8 @@ export function faltantesParaFase(
   const actual = ORDEN_FASE.indexOf(clase.fase)
   const hasta = ORDEN_FASE.indexOf(destino)
   if (hasta <= actual) return []
+
+  if (clase.esGranCampeonato) return faltantesGran(clase, jueces, destino, estilo)
 
   const faltan: string[] = []
   const lista = clase.ejemplares.filter((item) => item.numero != null)
@@ -972,6 +1025,7 @@ export async function estadoPista(codigo: string): Promise<EstadoPista> {
       ...clase,
       conFormatoA: clase.conFormatoA ?? true,
       modoCaptura: modoCapturaDe(clase.modoCaptura),
+      esGranCampeonato: clase.esGranCampeonato ?? false,
       excusasVotos: clase.excusasVotos ?? [],
       finalizados: clase.finalizados ?? [],
     })),
@@ -1120,6 +1174,15 @@ export async function pistaLlevaFormatoA(codigo: string, claseId: string, lleva:
     p_codigo: codigo,
     p_clase: claseId,
     p_lleva: lleva,
+    p_manual: manual,
+  })
+  if (error) throw mensaje(error)
+}
+
+export async function pistaAbrirGran(codigo: string, claseId: string, manual = false): Promise<void> {
+  const { error } = await supabase.rpc('acceso_abrir_gran_campeonato', {
+    p_codigo: codigo,
+    p_clase: claseId,
     p_manual: manual,
   })
   if (error) throw mensaje(error)

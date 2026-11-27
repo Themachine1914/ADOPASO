@@ -4,8 +4,44 @@ export type LugarF2 = (typeof LUGARES_F2)[number]
 
 export const LUGARES_PUESTO = ['1', '2', '3', '4', '5'] as const
 
+/** Lugares del gran campeonato, en el orden de la libreta. */
+export const LUGARES_GRAN = ['GC', 'GCR', '1', '2', '3', '4'] as const
+
+/** Gran campeón vale 1 y el cuarto finalista vale 6. Quien no fue votado cuenta como 7. */
+export const RANGO_GRAN: Record<(typeof LUGARES_GRAN)[number], number> = {
+  GC: 1,
+  GCR: 2,
+  '1': 3,
+  '2': 4,
+  '3': 5,
+  '4': 6,
+}
+
+export const ETIQUETA_GRAN: Record<(typeof LUGARES_GRAN)[number], string> = {
+  GC: 'Gran campeón',
+  GCR: 'Gran campeón reservado',
+  '1': 'Primer finalista',
+  '2': 'Segundo finalista',
+  '3': 'Tercer finalista',
+  '4': 'Cuarto finalista',
+}
+
+/** Título del puesto ya calculado: 1 es gran campeón y 6 es cuarto finalista. */
+export const PREMIO_GRAN = [
+  '',
+  'Gran campeón',
+  'Gran campeón reservado',
+  'Primer finalista',
+  'Segundo finalista',
+  'Tercer finalista',
+  'Cuarto finalista',
+]
+
 /** Reglamento 2019: donde un juez no puso al ejemplar en su votación final, cuenta como 6. */
 export const SIN_VOTO = 6
+
+/** En el gran campeonato hay seis lugares, así que quien queda fuera cuenta como 7. */
+export const SIN_VOTO_GRAN = 7
 
 export const LEYENDA_F2: Record<(typeof LUGARES_F2)[number], string> = {
   GC: 'Gran campeón',
@@ -119,6 +155,46 @@ export function lugaresCapturados(
     if (fila.puesto != null) mapa.set(fila.numero, fila.puesto)
   }
   return mapa
+}
+
+/** Hoja del gran campeonato. Misma regla de suma, con los seis títulos y el 7 para quien no fue votado. */
+export function hojaGranCampeonato(
+  ejemplares: EjemplarComputo[],
+  jueces: number[],
+  votos: VotoComputo[],
+): FilaComputo[] {
+  const escogidos = ejemplares.filter((e) => e.escogido).sort((a, b) => a.numero - b.numero)
+
+  const filas: FilaComputo[] = escogidos.map((ejemplar) => {
+    const porJuez = jueces.map((puesto) => {
+      const voto = votos.find(
+        (v) => v.juezPuesto === puesto && v.ejemplarNumero === ejemplar.numero && v.lugar in RANGO_GRAN,
+      )
+      return voto ? RANGO_GRAN[voto.lugar as keyof typeof RANGO_GRAN] : null
+    })
+    const votado = jueces.length > 0 && porJuez.some((n) => n != null)
+    const total = votado ? porJuez.reduce<number>((suma, n) => suma + (n ?? SIN_VOTO_GRAN), 0) : null
+    return { numero: ejemplar.numero, nombre: ejemplar.nombre, porJuez, total, completo: votado, puesto: null }
+  })
+
+  const ordenadas = filas
+    .filter((fila) => fila.total != null)
+    .sort((a, b) => {
+      if (a.total !== b.total) return (a.total ?? 0) - (b.total ?? 0)
+      for (let lugar = 1; lugar <= LUGARES_GRAN.length; lugar += 1) {
+        const deA = a.porJuez.filter((n) => n === lugar).length
+        const deB = b.porJuez.filter((n) => n === lugar).length
+        if (deA !== deB) return deB - deA
+      }
+      return a.numero - b.numero
+    })
+
+  ordenadas.forEach((fila, indice) => {
+    const original = filas.find((item) => item.numero === fila.numero)
+    if (original) original.puesto = indice + 1
+  })
+
+  return filas
 }
 
 export interface CerteroJuez {

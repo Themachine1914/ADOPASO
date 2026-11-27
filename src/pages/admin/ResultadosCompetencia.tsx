@@ -84,7 +84,8 @@ export function ResultadosCompetencia({
           <h2 className="typo-section">Resultados</h2>
           <p className="typo-meta mt-1">
             Revise el puesto y los puntos de cada categoría. Al sincronizar pasan a «Resultados» y al ranking: 1.º 10
-            puntos, 2.º 7 y 3.º 5, para el caballo, el propietario, el criador y el montador.
+            puntos, 2.º 7 y 3.º 5. En el gran campeonato son 40, 30, 20, 15, 10 y 5. Los puntos son para el caballo, el
+            propietario, el criador y el montador.
           </p>
         </div>
         {sincronizada ? (

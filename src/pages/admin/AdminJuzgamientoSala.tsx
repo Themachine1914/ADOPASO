@@ -1,7 +1,18 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/auth-context'
-import { hojaDeComputo, lugaresCapturados, LEYENDA_F2, LUGARES_F2, LUGARES_PUESTO, SIN_VOTO, type LugarF2 } from '../../lib/computo'
+import {
+  hojaDeComputo,
+  hojaGranCampeonato,
+  lugaresCapturados,
+  LEYENDA_F2,
+  LUGARES_F2,
+  LUGARES_PUESTO,
+  PREMIO_GRAN,
+  SIN_VOTO,
+  SIN_VOTO_GRAN,
+  type LugarF2,
+} from '../../lib/computo'
 import { etiquetaJuez, type EstiloJueces } from '../../lib/competencia'
 import { formatFechaEmision, formatFechaRegistro, formatNombre } from '../../lib/format'
 
@@ -78,8 +89,11 @@ export function AdminJuzgamientoSala() {
   if (!sala) return <p className="typo-meta">Esta clase no está en el juzgamiento.</p>
 
   const puestosJuez = sala.jueces.map((juez) => juez.puesto)
-  const computo = hojaDeComputo(sala.ejemplares, puestosJuez, sala.votos)
-  const lugares = lugaresCapturados(sala.ejemplares, puestosJuez, sala.votos, sala.cerrada)
+  const hoja = sala.esGranCampeonato ? hojaGranCampeonato : hojaDeComputo
+  const computo = hoja(sala.ejemplares, puestosJuez, sala.votos)
+  const lugares = sala.esGranCampeonato
+    ? new Map<number, number>()
+    : lugaresCapturados(sala.ejemplares, puestosJuez, sala.votos, sala.cerrada)
   const escogidos = sala.ejemplares.filter((item) => item.escogido)
 
   return (
@@ -97,6 +111,7 @@ export function AdminJuzgamientoSala() {
           {sala.juzgamiento.lugar ? ` · ${sala.juzgamiento.lugar}` : ''}
           {sala.juzgamiento.codigo ? ` · Código ${sala.juzgamiento.codigo}` : ''}
         </p>
+        {sala.esGranCampeonato ? null : (
         <button
           type="button"
           className="typo-meta mt-3 text-muted underline"
@@ -108,8 +123,15 @@ export function AdminJuzgamientoSala() {
         >
           Eliminar clase
         </button>
+        )}
       </div>
 
+      {sala.esGranCampeonato ? (
+        <p className="typo-lead rounded-[12px] border border-gold/40 bg-surface px-4 py-4">
+          Este gran campeonato se vota en la pista o con «Introducir datos manual». Aquí solo se consulta la hoja de cómputo.
+        </p>
+      ) : (
+      <>
       <Formulario
         juzgamientoId={sala.juzgamiento.id}
         ejemplares={sala.ejemplares}
@@ -173,11 +195,14 @@ export function AdminJuzgamientoSala() {
         </div>
       )}
 
+      </>
+      )}
       <Hoja
         categoria={sala.juzgamiento.categoria}
         lugar={sala.juzgamiento.lugar}
         jueces={sala.jueces}
         filas={computo}
+        gran={sala.esGranCampeonato}
       />
       {error ? <p className="typo-meta text-flag-red">{error}</p> : null}
     </div>
@@ -560,11 +585,13 @@ function Hoja({
   lugar,
   jueces,
   filas,
+  gran = false,
 }: {
   categoria: string
   lugar: string | null
   jueces: SalaJuzgamiento['jueces']
   filas: ReturnType<typeof hojaDeComputo>
+  gran?: boolean
 }) {
   const estilo = useContext(EstiloJuecesCtx)
   const ordenadas = useMemo(
@@ -601,11 +628,13 @@ function Hoja({
                 </th>
                 {fila.porJuez.map((puntos, indice) => (
                   <td key={`${fila.numero}-${indice}`} className="border border-[#1c1408] px-2 py-2">
-                    {puntos ?? (fila.total != null ? SIN_VOTO : '')}
+                    {puntos ?? (fila.total != null ? (gran ? SIN_VOTO_GRAN : SIN_VOTO) : '')}
                   </td>
                 ))}
                 <td className="border border-[#1c1408] px-2 py-2 font-semibold">{fila.total ?? ''}</td>
-                <td className="border border-[#1c1408] px-2 py-2 font-semibold">{fila.puesto ?? ''}</td>
+                <td className="border border-[#1c1408] px-2 py-2 font-semibold">
+                  {gran && fila.puesto ? PREMIO_GRAN[fila.puesto] : (fila.puesto ?? '')}
+                </td>
               </tr>
             ))}
           </tbody>

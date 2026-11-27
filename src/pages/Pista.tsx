@@ -2,7 +2,17 @@ import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { mesesCumplidos } from '../lib/campeonato'
-import { hojaDeComputo, juezMasCertero, LUGARES_PUESTO, SIN_VOTO } from '../lib/computo'
+import {
+  ETIQUETA_GRAN,
+  hojaDeComputo,
+  hojaGranCampeonato,
+  juezMasCertero,
+  LUGARES_GRAN,
+  LUGARES_PUESTO,
+  PREMIO_GRAN,
+  SIN_VOTO,
+  SIN_VOTO_GRAN,
+} from '../lib/computo'
 import {
   EXCUSAS,
   estadoPista,
@@ -16,6 +26,7 @@ import {
   limpiarCodigo,
   MAXIMO_FORMATO_A,
   mayoriaJueces,
+  pistaAbrirGran,
   pistaAsignarNumeros,
   pistaNumeroEjemplar,
   pistaAsistencia,
@@ -207,6 +218,12 @@ function Sala({ codigo, onSalir }: { codigo: string; onSalir: () => void }) {
         ) : null}
         {error ? <p className="typo-meta mt-3 text-flag-red">Sin conexión: {error}</p> : null}
 
+        {estado.rol === 'mesa' ? (
+          <div className="mt-6">
+            <GranCampeonato estado={estado} codigo={codigo} hacer={hacer} enCurso={enCurso?.categoria ?? null} />
+          </div>
+        ) : null}
+
         {visibles.length === 0 ? (
           <p className="typo-meta mt-8">La inscripción todavía no se ha cerrado. Esta pantalla se actualiza sola.</p>
         ) : (
@@ -263,6 +280,19 @@ function Sala({ codigo, onSalir }: { codigo: string; onSalir: () => void }) {
 }
 
 type Hacer = (accion: () => Promise<void>) => Promise<void>
+
+function computoDe(clase: ClasePista, puestos: number[]) {
+  const lista = numerados(clase)
+  const votos = clase.votos.map((v) => ({ juezPuesto: v.juezPuesto, lugar: v.lugar, ejemplarNumero: v.numero }))
+  const ejemplares = lista.map((item) => ({
+    numero: item.numero!,
+    nombre: item.nombre ?? '',
+    escogido: item.escogido && !item.excusa,
+  }))
+  return (clase.esGranCampeonato ? hojaGranCampeonato : hojaDeComputo)(ejemplares, puestos, votos).sort(
+    (a, b) => (a.puesto ?? 99) - (b.puesto ?? 99) || a.numero - b.numero,
+  )
+}
 
 function numerados(clase: ClasePista): EjemplarPista[] {
   return clase.ejemplares.filter((item) => item.numero != null)
@@ -524,11 +554,17 @@ function Juez({ clase, estado, codigo, hacer }: { clase: ClasePista; estado: Est
     return (
       <section>
         <h2 className="typo-name text-lg">Votación final</h2>
-        <p className="typo-meta mt-1">Elija el número para cada lugar. Un número no puede repetirse.</p>
+        <p className="typo-meta mt-1">
+          {clase.esGranCampeonato
+            ? 'Elija el número para cada título. Un número no puede repetirse.'
+            : 'Elija el número para cada lugar. Un número no puede repetirse.'}
+        </p>
         <div className="mt-4 space-y-4">
-          {LUGARES_PUESTO.slice(0, Math.max(1, Math.min(LUGARES_PUESTO.length, escogidos.length))).map((lugar) => (
+          {(clase.esGranCampeonato ? LUGARES_GRAN : LUGARES_PUESTO)
+            .slice(0, Math.max(1, Math.min(clase.esGranCampeonato ? LUGARES_GRAN.length : LUGARES_PUESTO.length, escogidos.length)))
+            .map((lugar) => (
             <div key={lugar} className="rounded-[12px] border border-border bg-surface p-3">
-              <p className="typo-label">{lugar}.º lugar</p>
+              <p className="typo-label">{clase.esGranCampeonato ? ETIQUETA_GRAN[lugar as (typeof LUGARES_GRAN)[number]] : `${lugar}.º lugar`}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {escogidos.map((item) => {
                   const activo = porLugar.get(lugar) === item.numero
@@ -787,8 +823,73 @@ function RepartirPorEdad({ clase, codigo, hacer, onListo }: { clase: ClasePista;
 // Mesa técnica
 // ---------------------------------------------------------------------------
 
+function GranCampeonato({
+  estado,
+  codigo,
+  hacer,
+  enCurso,
+}: {
+  estado: EstadoPista
+  codigo: string
+  hacer: Hacer
+  enCurso: string | null
+}) {
+  const grandes = estado.clases.filter((clase) => clase.esGranCampeonato)
+  return (
+    <section className="rounded-[12px] border border-gold/40 bg-surface p-4">
+      <h2 className="typo-name text-lg">Gran campeonato</h2>
+      <p className="typo-meta mt-1">
+        El 1.º y el 2.º de cada grupo de 49 meses en adelante entran solos cuando se cierra su categoría.
+      </p>
+      {grandes.length === 0 ? (
+        <p className="typo-meta mt-3">Todavía no hay clasificados.</p>
+      ) : (
+        <div className="mt-4 space-y-4">
+          {grandes.map((clase) => {
+            const caballos = numerados(clase)
+            return (
+              <div key={clase.id}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="typo-name text-base">{clase.categoria}</p>
+                    <p className="typo-meta mt-1">
+                      {caballos.length} clasificados
+                      {clase.fase === 'inscripcion' ? '' : ` · ${etiquetaFase(clase.fase)}`}
+                    </p>
+                  </div>
+                  {clase.fase === 'inscripcion' ? (
+                    <button
+                      type="button"
+                      disabled={enCurso != null || caballos.length === 0 || clase.modoCaptura === 'manual'}
+                      className="typo-btn rounded-[10px] bg-gold px-4 py-3 text-bg disabled:opacity-50"
+                      onClick={() => void hacer(() => pistaAbrirGran(codigo, clase.id))}
+                    >
+                      Votar
+                    </button>
+                  ) : null}
+                </div>
+                {clase.modoCaptura === 'manual' && clase.fase === 'inscripcion' ? <AvisoCapturaManual /> : null}
+                <ul className="mt-2 space-y-1">
+                  {caballos.map((item) => (
+                    <li key={item.id ?? item.numero} className="typo-meta">
+                      <span className="font-semibold text-gold">{item.numero}</span> {formatNombre(item.nombre)}
+                      {item.origen ? ` · ${item.origenPuesto}.º de ${item.origen}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function ElegirCategoria({ estado, codigo, hacer }: { estado: EstadoPista; codigo: string; hacer: Hacer }) {
-  const pendientes = estado.clases.filter((clase) => clase.fase !== 'inscripcion' && clase.fase !== 'cerrada')
+  const pendientes = estado.clases.filter(
+    (clase) => !clase.esGranCampeonato && clase.fase !== 'inscripcion' && clase.fase !== 'cerrada',
+  )
   const [elegida, setElegida] = useState('')
   const [preguntar, setPreguntar] = useState(false)
   const valor = pendientes.some((c) => c.id === elegida) ? elegida : (pendientes[0]?.id ?? '')
@@ -941,7 +1042,11 @@ function Mesa({
 }) {
   const lista = numerados(clase)
   const puestos = estado.jueces.map((j) => j.puesto)
-  const fases = FASES.filter((f) => f.value !== 'inscripcion' && (clase.conFormatoA || f.value !== 'formato_a'))
+  const fases = FASES.filter((f) => {
+    if (f.value === 'inscripcion') return false
+    if (clase.esGranCampeonato) return f.value === 'individual' || f.value === 'votacion' || f.value === 'cerrada'
+    return clase.conFormatoA || f.value !== 'formato_a'
+  })
   const [verTodos, setVerTodos] = useState(false)
   useEffect(() => setVerTodos(false), [clase.id])
   // Cuando todos los jueces terminaron el Formato A (o ya pasó), la mesa ve solo a los elegidos.
@@ -962,11 +1067,7 @@ function Mesa({
   const escogen = clase.fase === 'formato_a' || clase.fase === 'individual'
   const pasan = lista.filter((item) => item.escogido && !item.excusa).map((item) => item.numero)
   const cerrada = clase.fase === 'cerrada'
-  const computo = hojaDeComputo(
-    lista.map((item) => ({ numero: item.numero!, nombre: item.nombre ?? '', escogido: item.escogido && !item.excusa })),
-    puestos,
-    clase.votos.map((v) => ({ juezPuesto: v.juezPuesto, lugar: v.lugar, ejemplarNumero: v.numero })),
-  ).sort((a, b) => (a.puesto ?? 99) - (b.puesto ?? 99) || a.numero - b.numero)
+  const computo = computoDe(clase, puestos)
 
   function abrir(destino: Fase) {
     const faltan = faltantesParaFase(clase, puestos, destino, estiloDe(estado))
@@ -999,10 +1100,10 @@ function Mesa({
     <div className="space-y-8">
       <section>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="typo-label">Fase de la categoría</p>
+          <p className="typo-label">{clase.esGranCampeonato ? 'Gran campeonato' : 'Fase de la categoría'}</p>
           <p className="typo-caption">
-            {clase.conFormatoA ? 'Con Formato A' : 'Sin Formato A: pasan todos los confirmados'}
-            {puedeHabilitar ? (
+            {clase.esGranCampeonato ? 'Recorrido individual y votación' : clase.conFormatoA ? 'Con Formato A' : 'Sin Formato A: pasan todos los confirmados'}
+            {!clase.esGranCampeonato && puedeHabilitar ? (
               <button
                 type="button"
                 className="ml-3 underline"
@@ -1017,7 +1118,7 @@ function Mesa({
                 Habilitar Formato A
               </button>
             ) : null}
-            {puedeQuitar ? (
+            {!clase.esGranCampeonato && puedeQuitar ? (
               <button
                 type="button"
                 className="ml-3 underline"
@@ -1151,9 +1252,9 @@ function Mesa({
       ) : null}
 
       <section className="rounded-[12px] border border-gold/60 bg-surface p-4">
-        <p className="typo-label">Para el narrador · pasan al recorrido individual</p>
+        <p className="typo-label">{clase.esGranCampeonato ? 'Clasificados' : 'Para el narrador · pasan al recorrido individual'}</p>
         <p className="mt-2 font-display text-3xl font-semibold text-gold">{pasan.join(' · ') || '—'}</p>
-        {escogen ? (
+        {escogen && !clase.esGranCampeonato ? (
           <button type="button" className="typo-meta mt-3 underline" onClick={pasarMarcados}>
             Pasar a todos los que marcó algún juez en el formato A
           </button>
@@ -1247,9 +1348,13 @@ function Mesa({
 
       <section>
         <h2 className="typo-name text-lg">Hoja de cómputo</h2>
-        <p className="typo-meta mt-1">Suma de los lugares de cada juez. La suma más baja queda primera.</p>
-        <Narrador clase={clase} estado={estado} computo={computo} />
-        <TablaComputo estilo={estiloDe(estado)} computo={computo} puestos={puestos} />
+        <p className="typo-meta mt-1">
+          {clase.esGranCampeonato
+            ? 'Gran campeón vale 1 y el cuarto finalista vale 6. Quien no fue votado cuenta como 7. La suma más baja queda primera.'
+            : 'Suma de los lugares de cada juez. La suma más baja queda primera.'}
+        </p>
+        {clase.esGranCampeonato ? null : <Narrador clase={clase} estado={estado} computo={computo} />}
+        <TablaComputo estilo={estiloDe(estado)} computo={computo} puestos={puestos} gran={clase.esGranCampeonato} />
         {computo.length === 0 ? <p className="typo-meta mt-2">Todavía no hay ejemplares en el recorrido individual.</p> : null}
       </section>
     </div>
@@ -1277,9 +1382,11 @@ function TablaVotos({ clase, estado, impresa }: { clase: ClasePista; estado: Est
               </tr>
             </thead>
             <tbody className={impresa ? '' : 'divide-y divide-border'}>
-              {LUGARES_PUESTO.map((lugar) => (
+              {(clase.esGranCampeonato ? LUGARES_GRAN : LUGARES_PUESTO).map((lugar) => (
                 <tr key={lugar}>
-                  <th className={impresa ? CELDA_IMPRESA : 'px-3 py-2 text-left'}>{lugar}.º</th>
+                  <th className={impresa ? CELDA_IMPRESA : 'px-3 py-2 text-left'}>
+                    {clase.esGranCampeonato ? ETIQUETA_GRAN[lugar as (typeof LUGARES_GRAN)[number]] : `${lugar}.º`}
+                  </th>
                   {puestos.map((p) => (
                     <td key={p} className={impresa ? CELDA_IMPRESA : 'px-3 py-2 font-semibold'}>
                       {clase.votos.find((v) => v.juezPuesto === p && v.lugar === lugar)?.numero ?? ''}
@@ -1343,11 +1450,13 @@ function TablaComputo({
   puestos,
   impresa,
   estilo = 'numero',
+  gran = false,
 }: {
   computo: ReturnType<typeof hojaDeComputo>
   puestos: number[]
   impresa?: boolean
   estilo?: EstiloJueces
+  gran?: boolean
 }) {
   const celda = impresa ? CELDA_IMPRESA : 'px-3 py-2'
   return (
@@ -1374,11 +1483,13 @@ function TablaComputo({
               </th>
               {fila.porJuez.map((n, i) => (
                 <td key={i} className={celda}>
-                  {n ?? (fila.total != null ? SIN_VOTO : '')}
+                  {n ?? (fila.total != null ? (gran ? SIN_VOTO_GRAN : SIN_VOTO) : '')}
                 </td>
               ))}
               <td className={`${celda} font-semibold`}>{fila.total ?? ''}</td>
-              <td className={`${celda} font-semibold ${impresa ? '' : 'text-gold'}`}>{fila.puesto ?? ''}</td>
+              <td className={`${celda} font-semibold ${impresa ? '' : 'text-gold'}`}>
+                {gran && fila.puesto ? PREMIO_GRAN[fila.puesto] : (fila.puesto ?? '')}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -1393,11 +1504,7 @@ const CELDA_IMPRESA = 'border border-black px-2 py-1'
 function Acta({ clase, estado }: { clase: ClasePista; estado: EstadoPista }) {
   const lista = numerados(clase)
   const puestos = estado.jueces.map((j) => j.puesto)
-  const computo = hojaDeComputo(
-    lista.map((item) => ({ numero: item.numero!, nombre: item.nombre ?? '', escogido: item.escogido && !item.excusa })),
-    puestos,
-    clase.votos.map((v) => ({ juezPuesto: v.juezPuesto, lugar: v.lugar, ejemplarNumero: v.numero })),
-  ).sort((a, b) => (a.puesto ?? 99) - (b.puesto ?? 99) || a.numero - b.numero)
+  const computo = computoDe(clase, puestos)
 
   return (
     <div className="hidden bg-white p-6 text-black print:block">
@@ -1456,8 +1563,8 @@ function Acta({ clase, estado }: { clase: ClasePista; estado: EstadoPista }) {
       <TablaVotos clase={clase} estado={estado} impresa />
 
       <h2 className="mt-6 text-base font-bold">Hoja de cómputo</h2>
-      <TablaComputo estilo={estiloDe(estado)} computo={computo} puestos={puestos} impresa />
-      <Narrador clase={clase} estado={estado} computo={computo} impresa />
+      <TablaComputo estilo={estiloDe(estado)} computo={computo} puestos={puestos} impresa gran={clase.esGranCampeonato} />
+      {clase.esGranCampeonato ? null : <Narrador clase={clase} estado={estado} computo={computo} impresa />}
 
       <h2 className="mt-8 text-base font-bold">Firmas</h2>
       <div className="mt-6 grid grid-cols-2 gap-x-10 gap-y-12 text-sm">
