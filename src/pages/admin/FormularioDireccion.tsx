@@ -44,6 +44,7 @@ const ESTILO_IMPRESION = `
     background-image: none !important;
     box-shadow: none !important;
     text-shadow: none !important;
+    text-transform: uppercase !important;
   }
   #formulario-direccion thead {
     display: table-header-group;
@@ -95,13 +96,13 @@ function FormularioDireccionImpreso({
   return createPortal(
     <>
       <style>{ESTILO_IMPRESION}</style>
-      <div id="formulario-direccion" className="hidden font-sans text-xs text-[#1c1408] print:block">
+      <div id="formulario-direccion" className="hidden font-sans text-xs uppercase text-[#1c1408] print:block">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h1 className="font-display text-lg font-semibold uppercase leading-tight">Formulario dirección de eventos</h1>
             <p className="mt-2 text-sm">
               <span className="font-semibold uppercase">{categoria}</span>
-              {contexto ? <span className="mt-0.5 block font-normal normal-case">{contexto}</span> : null}
+              {contexto ? <span className="mt-0.5 block font-normal">{contexto}</span> : null}
             </p>
           </div>
           <p className="shrink-0 border border-[#1c1408] px-2 py-1 text-center text-xs font-bold leading-tight">

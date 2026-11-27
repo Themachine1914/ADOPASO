@@ -295,7 +295,7 @@ function Formulario({
       </form>
       {aviso ? <p className="mb-3 text-sm">{aviso}</p> : null}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[64rem] border-collapse text-left text-xs">
+        <table className="w-full min-w-[64rem] border-collapse text-left text-xs uppercase">
           <thead>
             <tr className="border-b border-[#1c1408]">
               {['No.', 'Registro', 'Asoc.', 'Nombre', 'Sexo', 'Nacimiento', 'Padre', 'Madre', 'Abuelo materno', 'Criador', 'Propietario', 'Montador', ...(lugares.size > 0 ? ['Lugar'] : []), ''].map((col) => (

@@ -184,10 +184,15 @@ function Sala({ codigo, onSalir }: { codigo: string; onSalir: () => void }) {
               {etiquetaAcceso(estado.rol, estado.juezPuesto, estiloDe(estado))}
               {estado.nombre ? ` · ${formatNombre(estado.nombre)}` : ''}
             </p>
-            <h1 className="typo-section mt-1">{estado.competencia.nombre}</h1>
+            <h1 className="typo-section mt-1 uppercase">{estado.competencia.nombre}</h1>
             <p className="typo-meta mt-1">
               {formatFechaEmision(estado.competencia.fecha)}
-              {estado.competencia.lugar ? ` · ${estado.competencia.lugar}` : ''}
+              {estado.competencia.lugar ? (
+                <>
+                  {' · '}
+                  <span className="uppercase">{estado.competencia.lugar}</span>
+                </>
+              ) : null}
             </p>
           </div>
           <button type="button" className="typo-meta shrink-0 underline" onClick={onSalir}>
@@ -1402,8 +1407,13 @@ function Acta({ clase, estado }: { clase: ClasePista; estado: EstadoPista }) {
           <p className="text-xs uppercase tracking-widest">ADOPASO · Acta de juzgamiento</p>
           <h1 className="text-xl font-bold">{clase.categoria}</h1>
           <p className="text-sm">
-            {estado.competencia.nombre} · {formatFechaEmision(estado.competencia.fecha)}
-            {estado.competencia.lugar ? ` · ${estado.competencia.lugar}` : ''}
+            <span className="uppercase">{estado.competencia.nombre}</span> · {formatFechaEmision(estado.competencia.fecha)}
+            {estado.competencia.lugar ? (
+              <>
+                {' · '}
+                <span className="uppercase">{estado.competencia.lugar}</span>
+              </>
+            ) : null}
             {estado.competencia.simulacion ? ' · SIMULACIÓN (no oficial)' : ''}
           </p>
         </div>

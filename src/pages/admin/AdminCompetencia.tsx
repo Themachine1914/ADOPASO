@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AyudaGuia } from '../../components/AyudaGuia'
 import { SearchInput } from '../../components/SearchInput'
@@ -7,6 +7,7 @@ import { useAuth } from '../../lib/auth-context'
 import {
   borrarAcceso,
   cambiarEstiloJueces,
+  actualizarCompetencia,
   buscarCaballos,
   cambiarMontador,
   cargarCompetencia,
@@ -33,11 +34,12 @@ import {
   type CaballoInscribible,
   type CategoriaCatalogo,
   type ClaseCompetencia,
+  type Competencia,
   type DetalleCompetencia,
   type Inscripcion as InscripcionCompetencia,
   type UltimoGrupo,
 } from '../../lib/competencia'
-import { formatFechaEmision, formatNombre } from '../../lib/format'
+import { enMayusculas, formatFechaEmision, formatNombre } from '../../lib/format'
 import { matchesSearch, normalize } from '../../lib/normalize'
 import { listarJueces, type JuezCatalogo } from '../../lib/juzgamiento'
 import { cerrarSimulacion } from '../../lib/simulacion'
@@ -119,11 +121,15 @@ export function AdminCompetencia() {
           <AyudaGuia id="competencias-en-vivo" />
         </div>
         <p className="typo-eyebrow mt-4">Competencia</p>
-        <h1 className="typo-page mt-2">{competencia.nombre}</h1>
-        <p className="typo-lead mt-2">
-          {formatFechaEmision(competencia.fecha)}
-          {competencia.lugar ? ` · ${competencia.lugar}` : ''} · {inscritos} inscripciones en {clases.length} categorías
-        </p>
+        <DatosCompetencia
+          competencia={competencia}
+          inscritos={inscritos}
+          categorias={clases.length}
+          onGuardar={async (datos) => {
+            await actualizarCompetencia(competencia.id, datos)
+            await recargar()
+          }}
+        />
         {competencia.simulacion ? (
           <div className="typo-meta mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-gold/60 px-3 py-2">
             <p>
@@ -471,6 +477,129 @@ export function AdminCompetencia() {
         ) : null}
       </section>
     </div>
+  )
+}
+
+function DatosCompetencia({
+  competencia,
+  inscritos,
+  categorias,
+  onGuardar,
+}: {
+  competencia: Competencia
+  inscritos: number
+  categorias: number
+  onGuardar: (datos: { nombre: string; fecha: string; lugar: string }) => Promise<void>
+}) {
+  const [editando, setEditando] = useState(false)
+  const [nombre, setNombre] = useState('')
+  const [fecha, setFecha] = useState('')
+  const [lugar, setLugar] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [errorLocal, setErrorLocal] = useState<string | null>(null)
+
+  function abrir() {
+    setNombre(enMayusculas(competencia.nombre))
+    setFecha(competencia.fecha)
+    setLugar(enMayusculas(competencia.lugar ?? ''))
+    setErrorLocal(null)
+    setEditando(true)
+  }
+
+  async function guardar(event: FormEvent) {
+    event.preventDefault()
+    if (!enMayusculas(nombre).trim() || !fecha) {
+      setErrorLocal('Escriba el nombre y la fecha de la competencia.')
+      return
+    }
+    setGuardando(true)
+    setErrorLocal(null)
+    try {
+      await onGuardar({ nombre, fecha, lugar })
+      setEditando(false)
+    } catch (err) {
+      setErrorLocal(err instanceof Error ? err.message : 'No se pudo guardar.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  if (!editando) {
+    return (
+      <>
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+          <h1 className="typo-page uppercase">{competencia.nombre}</h1>
+          <button type="button" onClick={abrir} className="typo-btn rounded-[10px] border border-gold px-4 py-2 text-gold">
+            Editar
+          </button>
+        </div>
+        <p className="typo-lead mt-2">
+          {formatFechaEmision(competencia.fecha)}
+          {competencia.lugar ? (
+            <>
+              {' · '}
+              <span className="uppercase">{competencia.lugar}</span>
+            </>
+          ) : null}{' '}
+          · {inscritos} inscripciones en {categorias} categorías
+        </p>
+      </>
+    )
+  }
+
+  return (
+    <form onSubmit={(event) => void guardar(event)} className="mt-4 grid gap-3 rounded-[12px] border border-border bg-surface p-5 sm:grid-cols-2">
+      <label className="sm:col-span-2">
+        <span className="typo-label">Nombre</span>
+        <input
+          value={nombre}
+          autoCapitalize="characters"
+          onChange={(event) => setNombre(enMayusculas(event.target.value))}
+          className="mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-2 text-ink uppercase"
+        />
+      </label>
+      <label>
+        <span className="typo-label">Fecha</span>
+        <input
+          type="date"
+          value={fecha}
+          onChange={(event) => setFecha(event.target.value)}
+          className="mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-2 text-ink"
+        />
+      </label>
+      <label>
+        <span className="typo-label">Lugar</span>
+        <input
+          value={lugar}
+          autoCapitalize="characters"
+          onChange={(event) => setLugar(enMayusculas(event.target.value))}
+          className="mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-2 text-ink uppercase"
+        />
+      </label>
+      <p className="typo-meta sm:col-span-2">
+        El nombre y el lugar se guardan en mayúsculas.
+        {inscritos > 0 ? ' Cambiar la fecha no mueve a los caballos ya inscritos de categoría.' : ''}
+        {competencia.sincronizadoEn ? ' El lugar y la fecha también se corrigen en el ranking.' : ''}
+      </p>
+      {errorLocal ? <p className="typo-meta text-flag-red sm:col-span-2">{errorLocal}</p> : null}
+      <div className="flex flex-wrap gap-2 sm:col-span-2">
+        <button
+          type="submit"
+          disabled={guardando}
+          className="typo-btn rounded-[10px] bg-gold px-4 py-2.5 text-bg disabled:opacity-60"
+        >
+          {guardando ? 'Guardando…' : 'Guardar'}
+        </button>
+        <button
+          type="button"
+          disabled={guardando}
+          onClick={() => setEditando(false)}
+          className="typo-btn rounded-[10px] border border-border px-4 py-2.5"
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
   )
 }
 

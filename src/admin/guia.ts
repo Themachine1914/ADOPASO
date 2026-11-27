@@ -270,10 +270,10 @@ export const GUIA: CategoriaGuia[] = [
         pregunta: '1. ¿Cómo creo una competencia?',
         pasos: [
           'Entre a «Competencias en vivo» en el menú.',
-          'En «Tomar del calendario» elija el evento: se llenan solos el nombre, la fecha y el lugar. Si no está en el calendario, escríbalos a mano.',
+          'En «Tomar del calendario» elija el evento: se llenan solos el nombre, la fecha y el lugar. Si no está en el calendario, escríbalos a mano. El nombre y el lugar quedan en mayúsculas.',
           'Pulse «Crear competencia». Se abre la pantalla de la competencia.',
         ],
-        nota: 'La fecha importa: la edad de cada caballo se cuenta a ese día para saber en qué categoría compite.',
+        nota: 'La fecha importa: la edad de cada caballo se cuenta a ese día para saber en qué categoría compite. Si hay un error de escritura en el nombre, la fecha o el lugar, pulse «Editar» en la pantalla de la competencia.',
         enlace: { to: '/admin/competencias', label: 'Abrir Competencias en vivo' },
       },
       {
@@ -300,7 +300,7 @@ export const GUIA: CategoriaGuia[] = [
       {
         pregunta: '¿Cómo imprimo el formulario de dirección de eventos?',
         respuesta:
-          'En la categoría, pulse «Imprimir formulario». Sale la hoja de esa clase: número, registro, asociación, nombre, sexo, nacimiento, padre, madre, abuelo materno, criador, propietario y montador. Si la votación final ya está capturada (la categoría cerrada, o cada juez con sus lugares completos), también sale el lugar de cada ejemplar que entró al recorrido. Va en blanco, sin fondo, para gastar poca tinta. En la ventana de impresión puede elegir «Guardar como PDF».',
+          'En la categoría, pulse «Imprimir formulario». Sale la hoja de esa clase, toda en mayúsculas: número, registro, asociación, nombre, sexo, nacimiento, padre, madre, abuelo materno, criador, propietario y montador, con el nombre y el lugar de la competencia. Si la votación final ya está capturada (la categoría cerrada, o cada juez con sus lugares completos), también sale el lugar de cada ejemplar que entró al recorrido. Va en blanco, sin fondo, para gastar poca tinta. En la ventana de impresión puede elegir «Guardar como PDF».',
       },
       {
         pregunta: '4. ¿Cómo doy acceso a pre-pista, jueces y mesa técnica?',

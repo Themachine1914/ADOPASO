@@ -123,7 +123,7 @@ export function AdminCaptura() {
   return (
     <div className="space-y-8">
       <div>
-        <Link to={`/admin/competencias/${id}`} className="typo-meta font-medium text-gold hover:text-gold-soft">
+        <Link to={`/admin/competencias/${id}`} className="typo-meta font-medium uppercase text-gold hover:text-gold-soft">
           ← {estado.competencia.nombre}
         </Link>
         <p className="typo-eyebrow mt-4">Introducir datos manual</p>
@@ -942,8 +942,13 @@ function Acta({
             <p className="text-xs uppercase tracking-widest">ADOPASO · Acta de juzgamiento</p>
             <h1 className="text-xl font-bold">{clase.categoria}</h1>
             <p className="text-sm">
-              {estado.competencia.nombre} · {formatFechaEmision(estado.competencia.fecha)}
-              {estado.competencia.lugar ? ` · ${estado.competencia.lugar}` : ''}
+              <span className="uppercase">{estado.competencia.nombre}</span> · {formatFechaEmision(estado.competencia.fecha)}
+              {estado.competencia.lugar ? (
+                <>
+                  {' · '}
+                  <span className="uppercase">{estado.competencia.lugar}</span>
+                </>
+              ) : null}
               {estado.competencia.simulacion ? ' · SIMULACIÓN (no oficial)' : ''}
             </p>
           </div>
