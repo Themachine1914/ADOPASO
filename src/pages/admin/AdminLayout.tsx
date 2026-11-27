@@ -121,6 +121,9 @@ export function AdminLayout() {
               <NavLink to="/admin/competencias" className={enlace}>
                 Competencias en vivo
               </NavLink>
+              <NavLink to="/admin/gran-campeonato" className={enlace}>
+                Gran campeonato
+              </NavLink>
               <NavLink to="/admin/juzgamiento" className={enlace}>
                 Juzgamiento
               </NavLink>

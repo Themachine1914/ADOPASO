@@ -387,9 +387,9 @@ export const GUIA: CategoriaGuia[] = [
         respuesta:
           'El 1.º y el 2.º de cada grupo de 49 meses en adelante entran solos al cerrar su categoría. También entran performance, placer y bellas formas, con los grupos que ya tienen. Machos y hembras van en gran campeonatos distintos. No hay pre-pista ni Formato A: se va al recorrido individual y a la votación.',
         pasos: [
-          'En la competencia, la sección «Gran campeonato» muestra quién ya clasificó y de qué categoría vino. Se actualiza al cerrar cada categoría.',
+          'En el menú, debajo de «Competencias en vivo», abra «Gran campeonato». Ahí se ve quién ya clasificó y de qué categoría vino. La lista se actualiza sola al cerrar cada categoría.',
           'En vivo: la mesa técnica, en su pantalla, pulsa «Votar» cuando esa clase va a la pista. Los jueces eligen gran campeón, gran campeón reservado y primer a cuarto finalista. Quedan dos caballos sin premio.',
-          'A mano: en esa misma sección pulse «Introducir datos manual» y luego «Empezar». Una sola persona anota la libreta de cada juez y el cierre.',
+          'A mano: en «Gran campeonato» pulse «Anotar a mano» y luego «Empezar». Una sola persona anota la libreta de cada juez y el cierre.',
           'Gana la suma más baja. Gran campeón vale 1, reservado 2, primer finalista 3, segundo 4, tercero 5 y cuarto 6. Quien no fue votado cuenta como 7.',
           'Al sincronizar, esos premios valen 40, 30, 20, 15, 10 y 5 puntos, iguales para el caballo, el criador y el exhibidor. El gran campeón queda marcado como campeón.',
         ],
