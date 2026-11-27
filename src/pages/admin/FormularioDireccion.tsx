@@ -7,6 +7,7 @@ const COLUMNAS = ['No.', 'Registro', 'Asoc.', 'Nombre', 'Sexo', 'Nacimiento', 'P
 
 /** Anchos como en la tabla de Libretas y cómputo, para que los nombres partan igual. */
 const ANCHOS = ['4%', '8%', '7%', '12%', '4%', '8%', '9%', '9%', '10%', '10%', '10%', '9%']
+const ANCHOS_CON_LUGAR = ['4%', '8%', '7%', '12%', '4%', '8%', '8%', '8%', '9%', '9%', '9%', '8%', '6%']
 
 /**
  * La misma tabla de «Libretas y cómputo», en hoja blanca. El estilo de impresión
@@ -87,6 +88,9 @@ function FormularioDireccionImpreso({
   }, [])
 
   const contexto = [evento, fecha ? formatFechaEmision(fecha) : '', lugar].filter(Boolean).join(' · ')
+  const conLugar = filas.some((fila) => fila.lugar != null)
+  const columnas = conLugar ? [...COLUMNAS, 'Lugar'] : COLUMNAS
+  const anchos = conLugar ? ANCHOS_CON_LUGAR : ANCHOS
 
   return createPortal(
     <>
@@ -108,13 +112,13 @@ function FormularioDireccionImpreso({
         </div>
         <table className="w-full table-fixed border-collapse text-left text-xs leading-5">
           <colgroup>
-            {ANCHOS.map((ancho, indice) => (
+            {anchos.map((ancho, indice) => (
               <col key={indice} style={{ width: ancho }} />
             ))}
           </colgroup>
           <thead>
             <tr className="border-b border-[#1c1408]">
-              {COLUMNAS.map((columna) => (
+              {columnas.map((columna) => (
                 <th key={columna} className="px-2 py-2 font-semibold uppercase">
                   {columna}
                 </th>
@@ -136,6 +140,7 @@ function FormularioDireccionImpreso({
                 <td className="px-2 py-2 align-top">{texto(fila.criador)}</td>
                 <td className="px-2 py-2 align-top">{texto(fila.propietario)}</td>
                 <td className="px-2 py-2 align-top">{texto(fila.montador)}</td>
+                {conLugar ? <td className="px-2 py-2 align-top font-semibold">{fila.lugar == null ? '' : `${fila.lugar}.º`}</td> : null}
               </tr>
             ))}
           </tbody>

@@ -58,6 +58,8 @@ export interface EventoPrograma {
 export interface SalaJuzgamiento {
   /** 1, 2, 3 o A, B, C, según la competencia (las clases sueltas usan números). */
   estiloJueces: 'numero' | 'letra'
+  /** La categoría ya se cerró: el lugar de la votación final se puede mostrar. */
+  cerrada: boolean
   juzgamiento: Juzgamiento
   ejemplares: EjemplarClase[]
   jueces: JuezAsignado[]
@@ -160,7 +162,7 @@ export async function cargarSala(id: string): Promise<SalaJuzgamiento | null> {
     supabase
       .from('juzgamientos')
       // Hay dos vínculos con competencias (la categoría pertenece a una, y la competencia señala la clase en pista).
-      .select('id, evento, fecha, lugar, categoria, codigo, competencias!juzgamientos_competencia_id_fkey(etiqueta_jueces)')
+      .select('id, evento, fecha, lugar, categoria, codigo, fase, competencias!juzgamientos_competencia_id_fkey(etiqueta_jueces)')
       .eq('id', id)
       .maybeSingle(),
     supabase.from('juzgamiento_ejemplares').select('*').eq('juzgamiento_id', id).order('numero'),
@@ -196,6 +198,7 @@ export async function cargarSala(id: string): Promise<SalaJuzgamiento | null> {
   const competencia = (juzgamiento.data as { competencias?: { etiqueta_jueces?: string } | null }).competencias
   return {
     estiloJueces: competencia?.etiqueta_jueces === 'letra' ? 'letra' : 'numero',
+    cerrada: (juzgamiento.data as { fase?: string }).fase === 'cerrada',
     juzgamiento: mapJuzgamiento(juzgamiento.data),
     ejemplares: filas.map((fila) => {
       const ejemplar = mapEjemplar(fila)

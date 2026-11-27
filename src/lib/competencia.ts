@@ -1,6 +1,6 @@
 import { mesesCumplidos, modalidadDeClase, sexoRegistro, type Modalidad } from './campeonato'
 import { normalize } from './normalize'
-import { LUGARES_PUESTO } from './computo'
+import { lugaresCapturados, LUGARES_PUESTO } from './computo'
 import { nombreAncestro } from './genealogia'
 import { valorModalidadRegistro } from './registro'
 import { supabase } from './supabase'
@@ -431,6 +431,8 @@ export interface FilaFormularioDireccion {
   criador: string | null
   propietario: string | null
   montador: string | null
+  /** Lugar de la votación final. Null si todavía no está capturada o el ejemplar no entró al recorrido. */
+  lugar: number | null
 }
 
 function primero(...valores: (string | null | undefined)[]): string | null {
@@ -446,13 +448,47 @@ function primero(...valores: (string | null | undefined)[]): string | null {
  * Lo que falta en la inscripción se completa desde el registro del caballo.
  */
 export async function cargarFormularioDireccion(claseId: string): Promise<FilaFormularioDireccion[]> {
-  const { data, error } = await supabase
-    .from('juzgamiento_ejemplares')
-    .select('id, numero, caballo_codigo, registro, asociacion, nombre, sexo, nacimiento, padre, madre, criador, propietario, montador')
-    .eq('juzgamiento_id', claseId)
-  if (error) throw error
+  const [ejemplares, clase, jueces, votos] = await Promise.all([
+    supabase
+      .from('juzgamiento_ejemplares')
+      .select(
+        'id, numero, caballo_codigo, registro, asociacion, nombre, sexo, nacimiento, padre, madre, criador, propietario, montador, escogido, excusa',
+      )
+      .eq('juzgamiento_id', claseId),
+    supabase.from('juzgamientos').select('fase').eq('id', claseId).maybeSingle(),
+    supabase.from('juzgamiento_jueces').select('puesto').eq('juzgamiento_id', claseId),
+    supabase.from('juzgamiento_votos').select('juez_puesto, lugar, ejemplar_numero').eq('juzgamiento_id', claseId),
+  ])
+  if (ejemplares.error) throw ejemplares.error
+  if (clase.error) throw clase.error
+  if (jueces.error) throw jueces.error
+  if (votos.error) throw votos.error
 
-  const filas = (data ?? []) as Record<string, unknown>[]
+  const filas = (ejemplares.data ?? []) as Record<string, unknown>[]
+  const votosComputo = ((votos.data ?? []) as Record<string, unknown>[]).map((row) => ({
+    juezPuesto: Number(row.juez_puesto),
+    lugar: String(row.lugar ?? ''),
+    ejemplarNumero: Number(row.ejemplar_numero),
+  }))
+  let puestosJuez = ((jueces.data ?? []) as Record<string, unknown>[]).map((row) => Number(row.puesto))
+  if (puestosJuez.length === 0 && clase.data?.fase === 'cerrada') {
+    const dePuesto = new Set<string>(LUGARES_PUESTO)
+    puestosJuez = [
+      ...new Set(votosComputo.filter((voto) => dePuesto.has(voto.lugar)).map((voto) => voto.juezPuesto)),
+    ].sort((a, b) => a - b)
+  }
+  const lugares = lugaresCapturados(
+    filas
+      .filter((fila) => fila.numero != null)
+      .map((fila) => ({
+        numero: Number(fila.numero),
+        nombre: String(fila.nombre ?? ''),
+        escogido: Boolean(fila.escogido) && !fila.excusa,
+      })),
+    puestosJuez,
+    votosComputo,
+    clase.data?.fase === 'cerrada',
+  )
   const codigos = [
     ...new Set(filas.map((fila) => texto(fila.caballo_codigo)).filter((codigo): codigo is string => Boolean(codigo))),
   ]
@@ -487,6 +523,7 @@ export async function cargarFormularioDireccion(claseId: string): Promise<FilaFo
         criador: primero(texto(fila.criador), caballo ? texto(caballo.criador) : null),
         propietario: texto(fila.propietario),
         montador: texto(fila.montador),
+        lugar: fila.numero == null ? null : (lugares.get(Number(fila.numero)) ?? null),
       }
     })
     .sort((a, b) => (a.numero ?? 9999) - (b.numero ?? 9999) || a.nombre.localeCompare(b.nombre, 'es'))

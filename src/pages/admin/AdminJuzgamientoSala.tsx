@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../lib/auth-context'
-import { hojaDeComputo, LEYENDA_F2, LUGARES_F2, LUGARES_PUESTO, SIN_VOTO, type LugarF2 } from '../../lib/computo'
+import { hojaDeComputo, lugaresCapturados, LEYENDA_F2, LUGARES_F2, LUGARES_PUESTO, SIN_VOTO, type LugarF2 } from '../../lib/computo'
 import { etiquetaJuez, type EstiloJueces } from '../../lib/competencia'
 import { formatFechaEmision, formatFechaRegistro, formatNombre } from '../../lib/format'
 
@@ -79,6 +79,7 @@ export function AdminJuzgamientoSala() {
 
   const puestosJuez = sala.jueces.map((juez) => juez.puesto)
   const computo = hojaDeComputo(sala.ejemplares, puestosJuez, sala.votos)
+  const lugares = lugaresCapturados(sala.ejemplares, puestosJuez, sala.votos, sala.cerrada)
   const escogidos = sala.ejemplares.filter((item) => item.escogido)
 
   return (
@@ -112,6 +113,7 @@ export function AdminJuzgamientoSala() {
       <Formulario
         juzgamientoId={sala.juzgamiento.id}
         ejemplares={sala.ejemplares}
+        lugares={lugares}
         onChange={async (accion) => {
           setError(null)
           try {
@@ -206,10 +208,12 @@ function Papel({ titulo, formato, children }: { titulo: string; formato: string;
 function Formulario({
   juzgamientoId,
   ejemplares,
+  lugares,
   onChange,
 }: {
   juzgamientoId: string
   ejemplares: EjemplarClase[]
+  lugares: Map<number, number>
   onChange: (accion: () => Promise<void>) => Promise<void>
 }) {
   const [form, setForm] = useState(ejemplarVacio)
@@ -294,7 +298,7 @@ function Formulario({
         <table className="w-full min-w-[64rem] border-collapse text-left text-xs">
           <thead>
             <tr className="border-b border-[#1c1408]">
-              {['No.', 'Registro', 'Asoc.', 'Nombre', 'Sexo', 'Nacimiento', 'Padre', 'Madre', 'Abuelo materno', 'Criador', 'Propietario', 'Montador', ''].map((col) => (
+              {['No.', 'Registro', 'Asoc.', 'Nombre', 'Sexo', 'Nacimiento', 'Padre', 'Madre', 'Abuelo materno', 'Criador', 'Propietario', 'Montador', ...(lugares.size > 0 ? ['Lugar'] : []), ''].map((col) => (
                 <th key={col} className="px-2 py-2 font-semibold uppercase">
                   {col}
                 </th>
@@ -316,6 +320,9 @@ function Formulario({
                 <td className="px-2 py-2">{item.criador ? formatNombre(item.criador) : ''}</td>
                 <td className="px-2 py-2">{item.propietario ? formatNombre(item.propietario) : ''}</td>
                 <td className="px-2 py-2">{item.montador ? formatNombre(item.montador) : ''}</td>
+                {lugares.size > 0 ? (
+                  <td className="px-2 py-2 font-semibold">{lugares.has(item.numero) ? `${lugares.get(item.numero)}.º` : ''}</td>
+                ) : null}
                 <td className="px-2 py-2">
                   <button type="button" className="underline" onClick={() => onChange(() => quitarEjemplar(item.id))}>
                     Quitar

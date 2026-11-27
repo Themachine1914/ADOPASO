@@ -85,6 +85,42 @@ export function hojaDeComputo(
   return filas
 }
 
+/**
+ * Cada juez ya escribió todos los lugares de la votación final (1.º al 5.º, o menos si hay
+ * menos ejemplares en el recorrido).
+ */
+export function votacionFinalCapturada(jueces: number[], votos: VotoComputo[], enFinal: number): boolean {
+  if (jueces.length === 0 || enFinal <= 0) return false
+  const lugares = new Set<string>(LUGARES_PUESTO.slice(0, Math.min(LUGARES_PUESTO.length, enFinal)))
+  return jueces.every((puesto) => {
+    const votados = new Set(
+      votos.filter((voto) => voto.juezPuesto === puesto && lugares.has(voto.lugar)).map((voto) => voto.lugar),
+    )
+    return votados.size === lugares.size
+  })
+}
+
+/**
+ * Lugar de cada ejemplar (1 es el primero) cuando ya se puede publicar: la categoría está
+ * cerrada, o cada juez completó su votación final. Si todavía faltan votos, queda vacío
+ * para no imprimir un orden que va a cambiar.
+ */
+export function lugaresCapturados(
+  ejemplares: EjemplarComputo[],
+  jueces: number[],
+  votos: VotoComputo[],
+  cerrada: boolean,
+): Map<number, number> {
+  const enFinal = ejemplares.filter((ejemplar) => ejemplar.escogido).length
+  if (enFinal === 0) return new Map()
+  if (!cerrada && !votacionFinalCapturada(jueces, votos, enFinal)) return new Map()
+  const mapa = new Map<number, number>()
+  for (const fila of hojaDeComputo(ejemplares, jueces, votos)) {
+    if (fila.puesto != null) mapa.set(fila.numero, fila.puesto)
+  }
+  return mapa
+}
+
 export interface CerteroJuez {
   juezPuesto: number
   aciertos: number
